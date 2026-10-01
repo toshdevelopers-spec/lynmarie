@@ -1,0 +1,46 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Node
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+.cache/
+.vite/
+
+# Logs
+*.log
+logs/
+run.txt
+
+# Local coding-agent and cloud CLI state
+.agents/
+.aws/
+.codex/
+skills-lock.json
+
+# Credentials and private keys
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Migration/customer/business data
+migration/data/
+migration/backups/
+database/backups/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+.neon

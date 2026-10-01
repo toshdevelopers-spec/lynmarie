@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  PRIVATE
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  ON_BACKORDER
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  wordpressId  Int?      @unique
+  email        String    @unique
+  passwordHash String?
+  firstName    String?
+  lastName     String?
+  phone        String?
+  role         UserRole  @default(CUSTOMER)
+  isActive     Boolean   @default(true)
+
+  orders       Order[]
+  addresses    Address[]
+  resetTokens  PasswordResetToken[]
+  reviews      Review[]
+  storeEvents  StoreEvent[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Address {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  type      AddressType
+  firstName String?
+  lastName  String?
+  company   String?
+  address1  String?
+  address2  String?
+  city      String?
+  state     String?
+  postcode  String?
+  country   String      @default("KE")
+  phone     String?
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  @@unique([userId, type])
+  @@map("addresses")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model Product {
+  id              Int           @id @default(autoincrement())
+  wordpressId     Int?          @unique
+
+  name            String
+  slug            String        @unique
+
+  description     String?
+  shortDescription String?
+
+  sku             String?       @unique
+
+  price           Decimal       @db.Decimal(12, 2)
+  regularPrice    Decimal?      @db.Decimal(12, 2)
+  salePrice       Decimal?      @db.Decimal(12, 2)
+
+  status          ProductStatus @default(PUBLISHED)
+
+  featured        Boolean       @default(false)
+  purchasable     Boolean       @default(true)
+
+  manageStock     Boolean       @default(false)
+  stockQuantity   Int?
+  stockStatus     StockStatus   @default(IN_STOCK)
+  backordersAllowed Boolean     @default(false)
+
+  weight          String?
+  shippingRequired Boolean      @default(true)
+
+  taxStatus       String?
+  taxClass        String?
+
+  totalSales      Int           @default(0)
+
+  averageRating   Decimal       @default(0) @db.Decimal(3, 2)
+  ratingCount     Int           @default(0)
+
+  purchaseNote    String?
+  metaTitle       String?
+  metaDescription String?
+
+  brandId         Int?
+  brand           Brand?        @relation(fields: [brandId], references: [id])
+
+  images          ProductImage[]
+  categories      ProductCategory[]
+  tags            ProductTag[]
+  attributes      ProductAttributeValue[]
+
+  orderItems      OrderItem[]
+  reviews         Review[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([brandId])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductImage {
+  id           Int      @id @default(autoincrement())
+  wordpressId  Int?
+
+  productId    Int
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  url          String
+  thumbnailUrl String?
+  altText      String?
+  name         String?
+
+  position     Int      @default(0)
+
+  createdAt    DateTime @default(now())
+
+  @@index([productId])
+  @@index([wordpressId])
+  @@map("product_images")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  wordpressId Int?     @unique
+
+  name        String
+  slug        String    @unique
+  description String?
+
+  products    ProductCategory[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+model ProductCategory {
+  productId  Int
+  categoryId Int
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model Tag {
+  id          Int      @id @default(autoincrement())
+  wordpressId Int?     @unique
+
+  name        String
+  slug        String    @unique
+
+  products    ProductTag[]
+
+  createdAt   DateTime @default(now())
+
+  @@map("tags")
+}
+
+model ProductTag {
+  productId Int
+  tagId     Int
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
+  @@map("product_tags")
+}
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  wordpressId Int?     @unique
+
+  name        String
+  slug        String    @unique
+
+  products    Product[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("brands")
+}
+
+model Attribute {
+  id          Int      @id @default(autoincrement())
+  wordpressId Int?     @unique
+
+  name        String
+  slug        String
+  type        String?
+
+  values      ProductAttributeValue[]
+
+  createdAt   DateTime @default(now())
+
+  @@unique([name, slug])
+  @@map("attributes")
+}
+
+model ProductAttributeValue {
+  id          Int      @id @default(autoincrement())
+
+  productId   Int
+  attributeId Int
+
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  value       String
+
+  visible     Boolean   @default(true)
+
+  @@unique([productId, attributeId, value])
+  @@index([attributeId])
+  @@map("product_attribute_values")
+}
+
+model Order {
+  id             Int       @id @default(autoincrement())
+  wordpressId    Int?      @unique
+
+  userId         Int?
+  user           User?     @relation(fields: [userId], references: [id])
+
+  orderNumber    String?   @unique
+
+  status         String
+
+  currency       String    @default("KES")
+
+  subtotal       Decimal   @db.Decimal(12, 2)
+  discountTotal  Decimal   @default(0) @db.Decimal(12, 2)
+  shippingTotal  Decimal   @default(0) @db.Decimal(12, 2)
+  taxTotal       Decimal   @default(0) @db.Decimal(12, 2)
+  total          Decimal   @db.Decimal(12, 2)
+
+  billingFirstName  String?
+  billingLastName   String?
+  billingEmail      String?
+  billingPhone      String?
+
+  shippingFirstName String?
+  shippingLastName  String?
+  shippingAddress   String?
+  shippingCity      String?
+  shippingCounty    String?
+  shippingPhone     String?
+
+  paymentMethod     String?
+  paymentReference  String?
+  notes             String?
+
+  items             OrderItem[]
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  wordpressId Int?     @unique
+  productId   Int
+  userId      Int?
+  reviewer    String
+  review      String
+  rating      Int
+  approved    Boolean  @default(false)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  @@index([productId, approved])
+  @@map("reviews")
+}
+
+model StoreEvent {
+  id        Int      @id @default(autoincrement())
+  visitorId String
+  action    String
+  productId Int?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  @@index([visitorId, createdAt])
+  @@index([action, createdAt])
+  @@map("store_events")
+}
+
+model Inquiry {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
+  @@map("inquiries")
+}
+
+model OrderItem {
+  id            Int       @id @default(autoincrement())
+
+  orderId       Int
+  productId     Int?
+
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  productName   String
+  sku           String?
+
+  quantity      Int
+
+  unitPrice     Decimal   @db.Decimal(12, 2)
+  totalPrice    Decimal   @db.Decimal(12, 2)
+
+  createdAt     DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}

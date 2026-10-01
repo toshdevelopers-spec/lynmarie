@@ -1,0 +1,37 @@
+{
+  "name": "lynmarie-backend",
+  "version": "1.0.0",
+  "description": "LynMarie Boutique Node.js API",
+  "main": "src/server.js",
+  "scripts": {
+    "postinstall": "prisma skills sync || exit 0",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "data:import": "node scripts/migration/import-woocommerce.js",
+    "data:migrate-images": "node scripts/migration/migrate-images-to-cloudinary.js",
+    "admin:bootstrap": "node scripts/bootstrap-owner.js"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.12.1",
+    "pg": "^8.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.0"
+  }
+}
