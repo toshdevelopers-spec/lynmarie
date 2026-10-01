@@ -217,10 +217,11 @@ body { min-height: 100vh; background: var(--fashion-paper); font-family: 'DM San
 #root { min-height: 100vh; background: var(--fashion-paper); }
 h1, h2, h3, h4, .font-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
 .fashion-hero { position: relative; display: grid; place-items: center; isolation: isolate; overflow: hidden; min-height: min(790px, calc(100svh - 96px)); background: #302047; color: #fff; }
+.fashion-hero-media { position: absolute; z-index: 0; inset: 0; overflow: hidden; }
 .fashion-hero-image { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 40%; opacity: 0; transform: scale(1.025); transition: opacity 1s ease, transform 7.5s ease; }
 .fashion-hero-image.is-current { opacity: 1; transform: scale(1); filter: brightness(1.08) saturate(1.06); }
 .fashion-hero-overlay { position: absolute; z-index: -1; inset: 0; background: rgba(43, 28, 72, .2); }
-.fashion-hero-content { width: min(780px, calc(100% - 38px)); padding: 90px 0 110px; text-align: center; animation: fashion-copy-in .7s ease both; }
+.fashion-hero-content { position: relative; z-index: 1; width: min(780px, calc(100% - 38px)); padding: 90px 0 110px; text-align: center; animation: fashion-copy-in .7s ease both; }
 .fashion-hero-eyebrow { display: inline-block; color: #eee5fa; font-size: 10px; font-weight: 700; letter-spacing: .24em; }
 .fashion-hero-content h1 { margin: 21px 0 20px; color: #fff; font-size: clamp(66px, 11vw, 136px); font-weight: 500; line-height: .76; letter-spacing: -.055em; text-shadow: 0 2px 18px rgba(25, 13, 40, .4); }
 .fashion-hero-content h1 em { color: #d9c7ee; font-weight: 500; }
@@ -787,4 +788,148 @@ body,
 
 @media (max-width: 640px) {
   .fashion-hero-values { font-size: 10px; letter-spacing: .14em; }
+}
+
+@media (max-width: 767px) {
+  .fashion-hero {
+    display: grid;
+    min-height: min(760px, calc(100svh - 68px));
+    height: min(760px, calc(100svh - 68px));
+    align-items: end;
+    background: #302047;
+  }
+
+  .fashion-hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .fashion-hero-image,
+  .fashion-hero-image.is-current {
+    transform: scale(1.015);
+    object-fit: cover;
+  }
+
+  .fashion-hero-slide--statement .fashion-hero-image {
+    object-position: 78% center;
+  }
+
+  .fashion-hero-slide--occasion .fashion-hero-image {
+    object-position: 24% center;
+  }
+
+  .fashion-hero-slide--everyday .fashion-hero-image {
+    object-position: 76% center;
+  }
+
+  .fashion-hero-overlay {
+    display: block;
+    background: linear-gradient(0deg, rgb(18 14 20 / 78%) 0%, rgb(18 14 20 / 58%) 29%, rgb(18 14 20 / 10%) 70%, rgb(18 14 20 / 4%) 100%);
+  }
+
+  .fashion-hero-content {
+    align-self: end;
+    width: min(100%, 560px);
+    max-width: none;
+    margin: 0;
+    padding: 40px 24px 90px;
+    background: transparent;
+    text-align: left;
+  }
+
+  .fashion-hero-content--left,
+  .fashion-hero-content--right {
+    margin: 0;
+  }
+
+  .fashion-hero-content h1 {
+    margin: 12px 0 13px;
+    font-size: clamp(42px, 11.5vw, 58px);
+    font-weight: 800;
+    line-height: .92;
+    letter-spacing: -.045em;
+    text-shadow: 0 2px 18px rgb(0 0 0 / 38%);
+  }
+
+  .fashion-hero-content h1 span {
+    font-size: .32em;
+    letter-spacing: .18em;
+  }
+
+  .fashion-hero-content h1 em {
+    font-weight: 800;
+  }
+
+  .fashion-hero-content p {
+    max-width: 27rem;
+    margin: 0 0 17px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-shadow: 0 1px 10px rgb(0 0 0 / 65%);
+  }
+
+  .fashion-hero-eyebrow {
+    color: #fff5e7;
+    font-size: 9px;
+    letter-spacing: .19em;
+    text-shadow: 0 1px 9px rgb(0 0 0 / 65%);
+  }
+
+  .fashion-hero-cta {
+    min-height: 46px;
+    padding-inline: 19px;
+  }
+
+  .fashion-hero-content .fashion-hero-values {
+    margin-top: 18px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-shadow: 0 1px 9px rgb(0 0 0 / 65%);
+  }
+
+  .fashion-hero-controls {
+    right: 16px;
+    bottom: 12px;
+  }
+
+  .collection-track {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    overflow: visible;
+    padding: 3px 0 0;
+  }
+
+  .collection-track .collection-card {
+    display: block;
+    width: 100%;
+    border-radius: 13px;
+  }
+
+  .collection-track .collection-card:nth-child(n + 5) {
+    display: none;
+  }
+
+  .collection-card-image {
+    aspect-ratio: 4 / 3.6;
+  }
+
+  .collection-card-copy {
+    padding: 16px 16px 18px;
+  }
+
+  .collection-card-copy h2,
+  .collection-card-copy h3 {
+    font-size: 22px;
+  }
+
+  .collections-page-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
 }

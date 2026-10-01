@@ -57,24 +57,26 @@ export default function HeroSlider() {
 
   return (
     <section
-      className={`fashion-hero fashion-hero--${slide.align}`}
+      className={`fashion-hero fashion-hero--${slide.align} fashion-hero-slide--${slide.id}`}
       aria-label="Featured LynMarie collections"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {slides.map((item, index) => (
-        <img
-          key={item.id}
-          src={item.image}
-          alt={index === current ? item.alt : ''}
-          aria-hidden={index !== current}
-          loading={index === 0 ? 'eager' : 'lazy'}
-          decoding="async"
-          fetchPriority={index === 0 ? 'high' : 'auto'}
-          className={`fashion-hero-image ${index === current ? 'is-current' : ''}`}
-        />
-      ))}
-      <div className={`fashion-hero-overlay fashion-hero-overlay--${slide.align}`} aria-hidden="true" />
+      <div className="fashion-hero-media">
+        {slides.map((item, index) => (
+          <img
+            key={item.id}
+            src={item.image}
+            alt={index === current ? item.alt : ''}
+            aria-hidden={index !== current}
+            loading={index === 0 ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchPriority={index === 0 ? 'high' : 'auto'}
+            className={`fashion-hero-image ${index === current ? 'is-current' : ''}`}
+          />
+        ))}
+        <div className={`fashion-hero-overlay fashion-hero-overlay--${slide.align}`} aria-hidden="true" />
+      </div>
       <div key={slide.id} className={`fashion-hero-content fashion-hero-content--${slide.align}`}>
         <span className="fashion-hero-eyebrow">{slide.label}</span>
         <h1><span>{slide.title}</span><br /><em>{slide.highlight}</em></h1>
