@@ -814,7 +814,7 @@ body,
   }
 
   .fashion-hero-slide--statement .fashion-hero-image {
-    object-position: 78% center;
+    object-position: 100% center;
   }
 
   .fashion-hero-slide--occasion .fashion-hero-image {
@@ -822,7 +822,7 @@ body,
   }
 
   .fashion-hero-slide--everyday .fashion-hero-image {
-    object-position: 76% center;
+    object-position: 100% center;
   }
 
   .fashion-hero-overlay {

@@ -5,7 +5,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 const slides = [
   {
     id: 'statement',
-    image: '/images/stunning-barefooted-woman-trendy-fur-coat-dancing-laughing-photoshoot.webp',
+    image: '/images/hero1.png',
     alt: 'Model in a dramatic purple coat, placed on the right with open space for the story on the left',
     align: 'left',
     label: 'THE NEW SEASON',
@@ -29,7 +29,7 @@ const slides = [
   },
   {
     id: 'everyday',
-    image: '/images/girl-yellow-wall-with-shopping-bags.webp',
+    image: '/images/hero3.png',
     alt: 'Shopper carrying boutique bags on the right against a warm cream wall, with space on the left',
     align: 'left',
     label: 'YOUR EVERYDAY, ELEVATED',
