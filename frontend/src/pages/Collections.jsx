@@ -10,13 +10,18 @@ export default function Collections() {
   return (
     <div className="collections-page">
       <header className="collections-page-heading">
-        <span className="section-kicker">STYLE, COMFORT, CONFIDENCE</span>
-        <h1>Find your collection</h1>
-        <p>Explore every edit, thoughtfully chosen for the way you want to feel.</p>
+        <span className="section-kicker collections-page-kicker">STYLE, COMFORT, CONFIDENCE</span>
+        <h1 className="collections-page-title">Find your collection</h1>
+        <p className="collections-page-intro">Explore every edit, thoughtfully chosen for the way you want to feel.</p>
       </header>
       <div className="collections-page-grid">
-        {collections.map(category => (
-          <Link key={category.id} to={`/category/${category.slug}`} className="collection-card group">
+        {collections.map((category, index) => (
+          <Link
+            key={category.id}
+            to={`/category/${category.slug}`}
+            className="collection-card collections-page-card group"
+            style={{ animationDelay: `${Math.min(index, 7) * 65}ms` }}
+          >
             <div className="collection-card-image">
               <img src={categoryArtwork(category)} alt={`${category.name} collection`} loading="lazy" decoding="async" />
               <span className="collection-card-count">{category._count.products} {category._count.products === 1 ? 'piece' : 'pieces'}</span>

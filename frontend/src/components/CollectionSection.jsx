@@ -21,9 +21,9 @@ export default function CollectionSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="collection-heading mb-8">
           <div>
-            <span className="section-kicker">CURATED FOR YOUR EVERYDAY</span>
+            <span className="section-kicker">CURATED FOR YOUR EVERYDAY MOVE</span>
             <h2 className="mt-2 text-3xl md:text-4xl font-serif font-bold text-purple-950 tracking-wide">
-              Shop the collections
+              Collections
             </h2>
             <p className="mt-2 max-w-2xl text-gray-600 font-sans">
               Find your next favourite in pieces selected for style, comfort and confidence.

@@ -84,10 +84,12 @@ export default function HeroSlider() {
         <Link to={slide.href} className="fashion-hero-cta">{slide.cta}<ArrowRight size={17} /></Link>
         <div className="fashion-hero-values" aria-label="Style, Comfort, Confidence">STYLE <i>|</i> COMFORT <i>|</i> CONFIDENCE</div>
       </div>
+      <div className="fashion-hero-arrows" aria-label="Featured collection navigation">
+        <button onClick={prev} aria-label="Previous featured collection"><ChevronLeft size={22} /></button>
+        <button onClick={next} aria-label="Next featured collection"><ChevronRight size={22} /></button>
+      </div>
       <div className="fashion-hero-controls">
         <span className="fashion-hero-counter">0{current + 1} <i>/</i> 0{slides.length}</span>
-        <button onClick={prev} aria-label="Previous featured collection"><ChevronLeft size={19} /></button>
-        <button onClick={next} aria-label="Next featured collection"><ChevronRight size={19} /></button>
       </div>
     </section>
   );

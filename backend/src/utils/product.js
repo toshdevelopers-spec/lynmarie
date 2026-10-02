@@ -10,6 +10,7 @@ export function productDto(p) {
     prices: { price: Math.round(price * 100), regular_price: Math.round(regular * 100) },
     status: p.status.toLowerCase(), featured: p.featured, purchasable: p.purchasable,
     manage_stock: p.manageStock, stock_quantity: p.stockQuantity,
+    backorders_allowed: p.backordersAllowed,
     stock_status: p.stockStatus === "IN_STOCK" ? "instock" : p.stockStatus === "ON_BACKORDER" ? "onbackorder" : "outofstock",
     on_sale: p.salePrice != null && Number(p.salePrice) < regular,
     images: (p.images || []).map(i => ({ id: i.wordpressId ?? i.id, src: i.url, thumbnail: i.thumbnailUrl, alt: i.altText || "", name: i.name })),

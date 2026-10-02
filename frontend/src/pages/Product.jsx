@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProduct } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
@@ -9,6 +9,15 @@ import Button from '../components/ui/Button';
 import { Minus, Plus, ShoppingCart, Heart, Share2, Star } from 'lucide-react';
 import { track } from '../services/tracking';
 
+const getAttributeOptions = (product, matcher) => [...new Map(
+  (product?.attributes || [])
+    .filter(attribute => attribute.visible !== false && matcher.test(`${attribute.name || ''} ${attribute.slug || ''}`))
+    .flatMap(attribute => attribute.options || [])
+    .map(option => String(option).trim())
+    .filter(Boolean)
+    .map(option => [option.toLocaleLowerCase(), option]),
+).values()];
+
 const Product = () => {
   const { id } = useParams();
   const { product, loading, error } = useProduct(id);
@@ -17,6 +26,22 @@ const Product = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
+  const colorOptions = useMemo(() => getAttributeOptions(product, /colou?r/i), [product?.attributes]);
+  const sizeOptions = useMemo(() => getAttributeOptions(product, /size/i), [product?.attributes]);
+  const availableQuantity = product?.manage_stock && product.stock_quantity != null && Number.isFinite(Number(product.stock_quantity))
+    ? Math.max(0, Number(product.stock_quantity))
+    : null;
+  const backordersAllowed = Boolean(product?.backorders_allowed);
+  const quantityLimit = availableQuantity == null ? 10 : Math.max(availableQuantity, backordersAllowed ? 10 : 1);
+  const canPurchase = (availableQuantity == null || availableQuantity > 0 || backordersAllowed)
+    && (product?.stock_status !== 'outofstock' || backordersAllowed);
+
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedImage(0);
+    setSelectedColor(colorOptions[0] || null);
+    setSelectedSize(sizeOptions[0] || null);
+  }, [id, product?.id, colorOptions, sizeOptions]);
 
   useEffect(() => {
     if (!product) return undefined;
@@ -32,7 +57,7 @@ const Product = () => {
 
   const handleQuantityChange = (change) => {
     const newQuantity = quantity + change;
-    if (newQuantity >= 1 && newQuantity <= 10) {
+    if (newQuantity >= 1 && newQuantity <= quantityLimit) {
       setQuantity(newQuantity);
     }
   };
@@ -161,11 +186,11 @@ const Product = () => {
               {product.short_description || product.description || 'Beautiful piece from Lyn Marie Boutique collection. Made with premium materials for comfort and style.'}
             </p>
 
-            {/* Size Selection */}
-            <div>
+            {/* Only show sizes recorded for this product. */}
+            {sizeOptions.length > 0 && <div>
               <h3 className="font-medium text-gray-900 mb-3">Size</h3>
-              <div className="flex gap-2">
-                {['XS', 'S', 'M', 'L', 'XL'].map((size) => (
+              <div className="flex flex-wrap gap-2">
+                {sizeOptions.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
@@ -179,24 +204,24 @@ const Product = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            </div>}
 
-            {/* Color Selection */}
-            <div>
+            {/* Only show colors recorded for this product. */}
+            {colorOptions.length > 0 && <div>
               <h3 className="font-medium text-gray-900 mb-3">Color</h3>
-              <div className="flex gap-2">
-                {['#000000', '#FFFFFF', '#FF6B6B', '#4ECDC4', '#FFE66D'].map((color) => (
+              <div className="flex flex-wrap gap-2">
+                {colorOptions.map((color) => (
                   <button
                     key={color}
                     onClick={() => setSelectedColor(color)}
-                    className={`w-10 h-10 rounded-full border-2 transition-colors ${
-                      selectedColor === color ? 'border-[#4c00b0] scale-110' : 'border-gray-300'
+                    aria-pressed={selectedColor === color}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedColor === color ? 'border-[#4c00b0] bg-purple-50 text-[#4c00b0]' : 'border-gray-300'
                     }`}
-                    style={{ backgroundColor: color }}
-                  />
+                  >{color}</button>
                 ))}
               </div>
-            </div>
+            </div>}
 
             {/* Quantity */}
             <div>
@@ -213,13 +238,17 @@ const Product = () => {
                   <span className="px-4 py-2 font-medium text-lg">{quantity}</span>
                   <button
                     onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= 10}
+                    disabled={quantity >= quantityLimit || !canPurchase}
                     className="px-4 py-2 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-                <span className="text-gray-600 text-sm">10 available</span>
+                <span className="text-gray-600 text-sm">
+                  {availableQuantity == null
+                    ? 'Stock count not tracked'
+                    : `${availableQuantity} ${availableQuantity === 1 ? 'piece' : 'pieces'} available${backordersAllowed && availableQuantity === 0 ? ' for backorder' : ''}`}
+                </span>
               </div>
             </div>
 
@@ -229,9 +258,10 @@ const Product = () => {
                 size="large"
                 className="flex-1"
                 onClick={handleAddToCart}
+                disabled={!canPurchase}
               >
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                Add to Cart
+                {canPurchase ? 'Add to Cart' : 'Out of Stock'}
               </Button>
               <button className="p-4 border border-gray-300 rounded-lg hover:border-[#4c00b0] hover:bg-purple-50 transition-colors">
                 <Heart className="w-6 h-6 text-gray-600" />
@@ -250,8 +280,12 @@ const Product = () => {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">In Stock</h4>
-                  <p className="text-sm text-gray-600">Ready to ship within 2-3 business days</p>
+                  <h4 className="font-medium text-gray-900">
+                    {!canPurchase ? 'Out of Stock' : availableQuantity === 0 ? 'Available on Backorder' : 'In Stock'}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {availableQuantity == null ? 'Stock count is not tracked for this item.' : `${availableQuantity} ${availableQuantity === 1 ? 'piece' : 'pieces'} currently in stock.`}
+                  </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

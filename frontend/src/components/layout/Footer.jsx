@@ -7,7 +7,7 @@ const Footer = () => {
   const availableCategories = categories.filter(category => category._count?.products > 0);
 
   return (
-    <footer className="bg-[#4c00b0] text-white">
+    <footer className="storefront-footer text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
@@ -90,16 +90,19 @@ const Footer = () => {
             </ul>
 
             {/* Social Links */}
-            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 text-sm">
-              <a href="https://www.facebook.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" className="text-purple-200 hover:text-white transition-colors" aria-label="Facebook">Facebook</a>
-              <a href="https://www.instagram.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" className="text-purple-200 hover:text-white transition-colors" aria-label="Instagram">Instagram</a>
-              <a href="https://www.tiktok.com/@lynmarie_boutique?_r=1&_t=ZS-9ABZLCPoEAn" target="_blank" rel="noopener noreferrer" className="text-purple-200 hover:text-white transition-colors" aria-label="TikTok">TikTok</a>
+            <div className="footer-socials mt-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-purple-100">Follow Lyn Marie</p>
+              <div className="flex flex-wrap gap-2">
+                <a href="https://www.facebook.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">Facebook</a>
+                <a href="https://www.instagram.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
+                <a href="https://www.tiktok.com/@lynmarie_boutique?_r=1&_t=ZS-9ABZLCPoEAn" target="_blank" rel="noopener noreferrer" aria-label="TikTok">TikTok</a>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-[#4c00b0] mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-white/20 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-purple-200 text-sm font-sans">
             © {new Date().getFullYear()} Lyn Marie Boutique. All rights reserved.
           </p>
