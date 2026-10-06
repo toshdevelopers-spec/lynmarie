@@ -948,8 +948,10 @@ body,
 @media (max-width: 767px) {
   .fashion-hero {
     display: grid;
-    min-height: min(760px, calc(100svh - 68px));
-    height: min(760px, calc(100svh - 68px));
+    min-height: 100vh;
+    min-height: 100svh;
+    height: 100vh;
+    height: 100svh;
     align-items: end;
     background: #302047;
   }

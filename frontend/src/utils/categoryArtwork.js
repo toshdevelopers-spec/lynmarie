@@ -2,9 +2,9 @@ const art = {
   kids: '/images/kids-dresses.webp',
   jackets: '/images/sassy-chic-woman-stands-with-self-assured-expression-puts-trendy-shades-looks-confidently-dressed-fashion-luxury-clothes-last-collection-ready-party-date-street-style.webp',
   tops: '/images/positive-afro-american-woman-turns-from-camera-aside-has-cheerful-expression-stands-against-clothing-rail-has-phone-talk.webp',
-  occasion: '/images/collections/wedding-unsplash.webp',
-  sets: '/images/collections/two-piece-unsplash.webp',
-  shopping: '/images/collections/sale-unsplash.webp',
+  occasion: '/images/wedding.webp',
+  sets: '/images/two-piece-sets.webp',
+  shopping: '/images/sales.webp',
   apparel: '/images/woman-surrounded-by-clothing-pile.webp',
 };
 

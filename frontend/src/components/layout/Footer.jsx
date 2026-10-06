@@ -12,7 +12,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <h3 className="text-lg font-serif font-bold mb-4 tracking-wide">Lyn Marie Boutique</h3>
+            <h3 className="text-lg font-serif font-bold mb-4 tracking-wide">Lynmarie Boutique</h3>
             <p className="text-purple-200 text-sm font-sans font-light tracking-wide">
               From Nairobi, with love — timeless pieces for your everyday glow. 
               Discover our curated collection of elegant fashion for every occasion.
@@ -91,7 +91,7 @@ const Footer = () => {
 
             {/* Social Links */}
             <div className="footer-socials mt-6">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-purple-100">Follow Lyn Marie</p>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[.16em] text-purple-100">Follow Lynmarie</p>
               <div className="flex flex-wrap gap-2">
                 <a href="https://www.facebook.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">Facebook</a>
                 <a href="https://www.instagram.com/lynmarieboutique/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
@@ -104,7 +104,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-white/20 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-purple-200 text-sm font-sans">
-            © {new Date().getFullYear()} Lyn Marie Boutique. All rights reserved.
+            © {new Date().getFullYear()} Lynmarie Boutique. All rights reserved.
           </p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <Link to="/privacy" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">

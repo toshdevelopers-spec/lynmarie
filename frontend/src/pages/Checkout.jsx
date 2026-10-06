@@ -21,19 +21,15 @@ const Checkout = () => {
     billing_email: user?.email || '',
     billing_phone: user?.phone || '',
     billing_address_1: '',
-    billing_address_2: '',
     billing_city: '',
-    billing_state: '',
-    billing_postcode: '',
+    billing_county: '',
     billing_country: 'KE',
     // Shipping
     shipping_first_name: user?.first_name || '',
     shipping_last_name: user?.last_name || '',
     shipping_address_1: '',
-    shipping_address_2: '',
     shipping_city: '',
-    shipping_state: '',
-    shipping_postcode: '',
+    shipping_county: '',
     shipping_country: 'KE',
     // Notes
     order_notes: '',
@@ -60,15 +56,14 @@ const Checkout = () => {
         phone: formData.billing_phone,
         address_1: formData.billing_address_1,
         city: formData.billing_city,
-        state: formData.billing_state,
-        postcode: formData.billing_postcode,
+        county: formData.billing_county,
       };
       const shipping = sameAsBilling ? undefined : {
         first_name: formData.shipping_first_name,
         last_name: formData.shipping_last_name,
         address_1: formData.shipping_address_1,
         city: formData.shipping_city,
-        state: formData.shipping_state,
+        county: formData.shipping_county,
         phone: formData.billing_phone,
       };
       const order = await checkoutService.createOrder({
@@ -155,14 +150,6 @@ const Checkout = () => {
                   className="md:col-span-2"
                 />
                 <Input
-                  name="billing_address_2"
-                  label="Apartment, suite, etc. (Optional)"
-                  type="text"
-                  value={formData.billing_address_2}
-                  onChange={handleChange}
-                  className="md:col-span-2"
-                />
-                <Input
                   name="billing_city"
                   label="City"
                   type="text"
@@ -171,19 +158,11 @@ const Checkout = () => {
                   required
                 />
                 <Input
-                  name="billing_state"
-                  label="State/Province"
+                  name="billing_county"
+                  label="County"
                   type="text"
-                  value={formData.billing_state}
+                  value={formData.billing_county}
                   onChange={handleChange}
-                />
-                <Input
-                  name="billing_postcode"
-                  label="Postal Code"
-                  type="text"
-                  value={formData.billing_postcode}
-                  onChange={handleChange}
-                  required
                 />
                 <Input
                   name="billing_country"
@@ -239,14 +218,6 @@ const Checkout = () => {
                     className="md:col-span-2"
                   />
                   <Input
-                    name="shipping_address_2"
-                    label="Apartment, suite, etc. (Optional)"
-                    type="text"
-                    value={formData.shipping_address_2}
-                    onChange={handleChange}
-                    className="md:col-span-2"
-                  />
-                  <Input
                     name="shipping_city"
                     label="City"
                     type="text"
@@ -255,19 +226,11 @@ const Checkout = () => {
                     required
                   />
                   <Input
-                    name="shipping_state"
-                    label="State/Province"
+                    name="shipping_county"
+                    label="County"
                     type="text"
-                    value={formData.shipping_state}
+                    value={formData.shipping_county}
                     onChange={handleChange}
-                  />
-                  <Input
-                    name="shipping_postcode"
-                    label="Postal Code"
-                    type="text"
-                    value={formData.shipping_postcode}
-                    onChange={handleChange}
-                    required
                   />
                   <Input
                     name="shipping_country"
@@ -373,6 +336,13 @@ const Checkout = () => {
                     <span className="text-sm">M-Pesa</span>
                   </label>
                 </div>
+                {formData.payment_method === 'mpesa' && (
+                  <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-gray-800">
+                    <p className="font-semibold">M-Pesa payment details</p>
+                    <p className="mt-1">Paybill: <span className="font-medium">522522</span></p>
+                    <p>Account number: <span className="font-medium">123456</span></p>
+                  </div>
+                )}
               </div>
 
               <Button
