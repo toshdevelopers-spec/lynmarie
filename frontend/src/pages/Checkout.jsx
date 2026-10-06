@@ -339,8 +339,8 @@ const Checkout = () => {
                 {formData.payment_method === 'mpesa' && (
                   <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-gray-800">
                     <p className="font-semibold">M-Pesa payment details</p>
-                    <p className="mt-1">Paybill: <span className="font-medium">522522</span></p>
-                    <p>Account number: <span className="font-medium">123456</span></p>
+                    <p className="mt-1">Paybill: <span className="font-medium">400200</span></p>
+                    <p>Account number: <span className="font-medium">851561</span></p>
                   </div>
                 )}
               </div>
