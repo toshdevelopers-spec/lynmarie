@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 
@@ -12,7 +13,7 @@ const productInput = z.object({
   status: z.enum(["DRAFT", "PUBLISHED", "PRIVATE"]).default("PUBLISHED"), featured: z.boolean().default(false),
   manageStock: z.boolean().default(true), stockQuantity: z.coerce.number().int().min(0).optional().nullable(),
   stockStatus: z.enum(["IN_STOCK", "OUT_OF_STOCK", "ON_BACKORDER"]).optional(), categoryIds: z.array(z.coerce.number().int().positive()).default([]),
-  imageUrls: z.array(z.string().url()).default([]), metaTitle: z.string().max(250).optional().nullable(), metaDescription: z.string().max(500).optional().nullable(),
+  imageUrls: z.array(z.string().url()).default([]), imageThumbnails: z.array(z.string().url()).optional(), metaTitle: z.string().max(250).optional().nullable(), metaDescription: z.string().max(500).optional().nullable(),
   brandId: z.coerce.number().int().positive().optional().nullable(),
 }).superRefine((v, ctx) => { if (v.salePrice != null && v.regularPrice != null && v.salePrice >= v.regularPrice) ctx.addIssue({ code: "custom", path: ["salePrice"], message: "Sale price must be lower than regular price" }); });
 
@@ -46,20 +47,27 @@ export const products = asyncHandler(async (req, res) => {
   const rows = await prisma.product.findMany({ include: productInclude, orderBy: { updatedAt: "desc" } });
   res.json({ success: true, data: rows });
 });
+export const productImageSignature = asyncHandler(async (req, res) => {
+  const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = process.env;
+  if (!cloudName || !apiKey || !apiSecret) return res.status(503).json({ success: false, message: "Cloudinary image uploads are not configured" });
+  const params = { folder: "lynmarie-products", timestamp: Math.floor(Date.now() / 1000) };
+  const signature = cloudinary.utils.api_sign_request(params, apiSecret);
+  res.json({ success: true, data: { cloudName, apiKey, ...params, signature } });
+});
 export const createProduct = asyncHandler(async (req, res) => {
-  const input = productInput.parse(req.body); const { categoryIds, imageUrls, ...fields } = input;
+  const input = productInput.parse(req.body); const { categoryIds, imageUrls, imageThumbnails, ...fields } = input;
   const slug = fields.slug || slugify(fields.name) || `product-${Date.now()}`;
   const row = await prisma.product.create({ data: {
     ...fields, slug, price: fields.salePrice ?? fields.price, regularPrice: fields.regularPrice ?? fields.price,
     stockStatus: fields.stockStatus || ((fields.stockQuantity ?? 0) > 0 ? "IN_STOCK" : "OUT_OF_STOCK"),
     categories: { create: categoryIds.map(categoryId => ({ category: { connect: { id: categoryId } } })) },
-    images: { create: imageUrls.map((url, position) => ({ url, position, altText: fields.name })) },
+    images: { create: imageUrls.map((url, position) => ({ url, thumbnailUrl: imageThumbnails?.[position] || null, position, altText: fields.name })) },
   }, include: productInclude });
   res.status(201).json({ success: true, data: row });
 });
 export const updateProduct = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id); const input = productInput.partial().parse(req.body);
-  const { categoryIds, imageUrls, ...fields } = input; const update = { ...fields };
+  const { categoryIds, imageUrls, imageThumbnails, ...fields } = input; const update = { ...fields };
   if (fields.name && !fields.slug) update.slug = slugify(fields.name) || `product-${Date.now()}`;
   if (fields.salePrice !== undefined) update.price = fields.salePrice ?? fields.regularPrice ?? fields.price;
   if (fields.stockQuantity !== undefined && fields.stockStatus === undefined) update.stockStatus = fields.stockQuantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK";
@@ -69,7 +77,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
     return tx.product.update({ where: { id }, data: {
       ...update,
       ...(categoryIds ? { categories: { create: categoryIds.map(categoryId => ({ category: { connect: { id: categoryId } } })) } } : {}),
-      ...(imageUrls ? { images: { create: imageUrls.map((url, position) => ({ url, position, altText: fields.name })) } } : {}),
+      ...(imageUrls ? { images: { create: imageUrls.map((url, position) => ({ url, thumbnailUrl: imageThumbnails?.[position] || null, position, altText: fields.name })) } } : {}),
     }, include: productInclude });
   });
   res.json({ success: true, data: row });

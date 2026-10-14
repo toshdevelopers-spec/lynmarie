@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [mobileNav, setMobileNav] = useState(false);
   const [editing, setEditing] = useState(null);
   const [productForm, setProductForm] = useState(emptyProduct);
+  const [productFiles, setProductFiles] = useState([]);
   const [userForm, setUserForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'CUSTOMER' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [editingCategory, setEditingCategory] = useState(null);
@@ -74,13 +75,28 @@ export default function AdminDashboard() {
   const setSectionAndClose = key => { setSection(key); setMobileNav(false); setEditing(null); setSearch(''); };
 
   const openProduct = product => {
+    setProductFiles([]);
     setEditing(product?.id || 'new');
     if (!product) { setProductForm(emptyProduct); return; }
     setProductForm({ name: product.name, description: product.description || '', shortDescription: product.shortDescription || '', sku: product.sku || '', price: String(product.price), regularPrice: String(product.regularPrice ?? product.price), salePrice: product.salePrice == null ? '' : String(product.salePrice), stockQuantity: String(product.stockQuantity ?? 0), categoryIds: product.categories?.map(x => x.categoryId || x.category?.id || x.id) || [], imageUrls: product.images?.map(i => i.url) || [], metaTitle: product.metaTitle || '', metaDescription: product.metaDescription || '', featured: product.featured, manageStock: product.manageStock, status: product.status });
   };
   const saveProduct = async e => {
-    e.preventDefault(); const body = { ...productForm, price: Number(productForm.salePrice || productForm.regularPrice || productForm.price), regularPrice: productForm.regularPrice ? Number(productForm.regularPrice) : null, salePrice: productForm.salePrice ? Number(productForm.salePrice) : null, stockQuantity: Number(productForm.stockQuantity), categoryIds: productForm.categoryIds.map(Number), imageUrls: productForm.imageUrls.map(x => x.trim()).filter(Boolean) };
-    await run(async () => { if (editing === 'new') await adminService.createProduct(body); else await adminService.updateProduct(editing, body); setEditing(null); });
+    e.preventDefault();
+    const imageUrls = productForm.imageUrls.map(url => url.trim()).filter(Boolean);
+    const currentImages = editing === 'new' ? [] : data.rows?.find(product => product.id === editing)?.images || [];
+    const imageUrlsChanged = JSON.stringify(imageUrls) !== JSON.stringify(currentImages.map(image => image.url));
+    const fields = { ...productForm };
+    delete fields.imageUrls;
+    await run(async () => {
+      const uploadedImages = [];
+      for (const file of productFiles) uploadedImages.push(await adminService.uploadProductImage(file));
+      const imageFields = productFiles.length
+        ? { imageUrls: uploadedImages.map(image => image.url), imageThumbnails: uploadedImages.map(image => image.thumbnailUrl) }
+        : imageUrlsChanged ? { imageUrls } : {};
+      const body = { ...fields, price: Number(productForm.salePrice || productForm.regularPrice || productForm.price), regularPrice: productForm.regularPrice ? Number(productForm.regularPrice) : null, salePrice: productForm.salePrice ? Number(productForm.salePrice) : null, stockQuantity: Number(productForm.stockQuantity), categoryIds: productForm.categoryIds.map(Number), ...imageFields };
+      if (editing === 'new') await adminService.createProduct(body); else await adminService.updateProduct(editing, body);
+      setEditing(null);
+    });
   };
   const saveUser = async e => { e.preventDefault(); await run(async () => { await adminService.createUser(userForm); setUserForm({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'CUSTOMER' }); }); };
   const filtered = rows => (rows || []).filter(row => JSON.stringify(row).toLowerCase().includes(search.toLowerCase()));
@@ -101,7 +117,7 @@ export default function AdminDashboard() {
           {section === 'overview' && <Overview data={data} onGo={setSectionAndClose} />}
           {section === 'products' && <>
             <div className="admin-toolbar"><div><h2>Product catalogue</h2><p>Manage product details, visibility, pricing and live inventory.</p></div><button className="admin-primary" onClick={() => openProduct(null)}><Plus size={17} /> Add product</button></div>
-            {editing && <ProductEditor form={productForm} setForm={setProductForm} categories={categories} isEditing={editing !== 'new'} close={() => setEditing(null)} save={saveProduct} busy={busy} />}
+            {editing && <ProductEditor form={productForm} setForm={setProductForm} files={productFiles} setFiles={setProductFiles} categories={categories} isEditing={editing !== 'new'} close={() => setEditing(null)} save={saveProduct} busy={busy} />}
             <SearchBox value={search} setValue={setSearch} />
             <div className="admin-table-wrap"><table><thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th>SEO</th><th /></tr></thead><tbody>{filtered(data.rows).map(p => <tr key={p.id}><td><div className="admin-product-cell"><img src={p.images?.[0]?.url || '/logo.webp'} alt="" /><div><b>{p.name}</b><small>{p.sku || 'No SKU'} · {p.categories?.map(c => c.category?.name || c.name).join(', ') || 'Uncategorised'}</small></div></div></td><td>{p.salePrice ? <><b>{money(p.salePrice)}</b><del>{money(p.regularPrice)}</del></> : money(p.price)}</td><td>{p.manageStock ? `${p.stockQuantity ?? 0} units` : 'Not tracked'}</td><td><span className={`admin-badge ${p.status === 'PUBLISHED' ? 'good' : 'muted'}`}>{p.status}</span></td><td>{p.metaTitle || p.metaDescription ? 'Set' : 'Missing'}</td><td className="admin-row-actions"><button aria-label="Edit product" onClick={() => openProduct(p)}><Pencil size={16} /></button><button aria-label="Remove product" onClick={() => run(() => adminService.deleteProduct(p.id))}><Archive size={16} /></button></td></tr>)}</tbody></table>{!data.rows?.length && <Empty message="No products found." />}</div>
           </>}
@@ -124,13 +140,14 @@ function Overview({ data, onGo }) {
 function SectionHeader({ title, caption }) { return <div className="admin-toolbar"><div><h2>{title}</h2><p>{caption}</p></div></div>; }
 function SearchBox({ value, setValue }) { return <label className="admin-search"><Search size={17} /><input value={value} onChange={e => setValue(e.target.value)} placeholder="Search this list" /></label>; }
 function Empty({ message }) { return <div className="admin-empty">{message}</div>; }
-function ProductEditor({ form, setForm, categories, isEditing, close, save, busy }) {
+function ProductEditor({ form, setForm, files, setFiles, categories, isEditing, close, save, busy }) {
   const patch = (key, value) => setForm(current => ({ ...current, [key]: value }));
   return <form className="admin-editor" onSubmit={save}><div className="admin-editor-heading"><div><h3>{isEditing ? 'Edit product' : 'Add a product'}</h3><p>Changes publish to the storefront immediately when status is Published.</p></div><button type="button" className="admin-close" onClick={close}>×</button></div><div className="admin-form-grid">
     <label>Product name<input required value={form.name} onChange={e => patch('name', e.target.value)} /></label><label>SKU<input value={form.sku} onChange={e => patch('sku', e.target.value)} /></label>
     <label>Regular price (KES)<input required type="number" min="0" step="0.01" value={form.regularPrice} onChange={e => patch('regularPrice', e.target.value)} /></label><label>Sale price (optional)<input type="number" min="0" step="0.01" value={form.salePrice} onChange={e => patch('salePrice', e.target.value)} /></label>
     <label>Stock quantity<input type="number" min="0" value={form.stockQuantity} onChange={e => patch('stockQuantity', e.target.value)} /></label><label>Visibility<select value={form.status} onChange={e => patch('status', e.target.value)}><option value="PUBLISHED">Published</option><option value="DRAFT">Draft</option><option value="PRIVATE">Hidden</option></select></label>
     <label className="span-two">Categories<select multiple value={form.categoryIds.map(String)} onChange={e => patch('categoryIds', [...e.target.selectedOptions].map(o => Number(o.value)))}>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><small>Use Ctrl/Command to select more than one.</small></label>
+    <label className="span-two">Upload replacement photos<input type="file" accept="image/*" multiple onChange={e => setFiles([...e.target.files])} /><small>Up to 20 MB each. Selected photos upload to Cloudinary on save and replace this product’s current photos.{files.length ? ` ${files.length} selected.` : ''}</small></label>
     <label className="span-two">Image URLs, one per line<textarea rows="3" value={form.imageUrls.join('\n')} onChange={e => patch('imageUrls', e.target.value.split('\n'))} placeholder="https://…" /></label>
     <label className="span-two">Short description<input value={form.shortDescription} onChange={e => patch('shortDescription', e.target.value)} /></label><label className="span-two">Product description<textarea rows="4" value={form.description} onChange={e => patch('description', e.target.value)} /></label>
     <label>SEO page title<input maxLength={250} value={form.metaTitle} onChange={e => patch('metaTitle', e.target.value)} /></label><label>SEO description<textarea rows="2" maxLength={500} value={form.metaDescription} onChange={e => patch('metaDescription', e.target.value)} /></label>

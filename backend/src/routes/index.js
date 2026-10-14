@@ -67,6 +67,7 @@ router.get("/products/:id/reviews", asyncHandler(async (req, res) => {
 }));
 router.get("/admin/dashboard", ...adminOnly, admin.dashboard);
 router.get("/admin/cart-activity", ...adminOnly, admin.cartActivity);
+router.post("/admin/product-image-signature", ...adminOnly, admin.productImageSignature);
 router.get("/admin/products", ...adminOnly, admin.products);
 router.post("/admin/products", ...adminOnly, admin.createProduct);
 router.patch("/admin/products/:id", ...adminOnly, admin.updateProduct);

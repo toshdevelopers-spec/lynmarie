@@ -16,18 +16,18 @@ export async function uploadImageToCloudinary(imageUrl, options = {}) {
     return {
       url: cloudinary.url(result.public_id, {
         secure: true,
-        width: 1600,
+        width: 2000,
         crop: 'limit',
-        quality: 'auto',
+        quality: 'auto:best',
         fetch_format: 'auto',
       }),
       publicId: result.public_id,
       thumbnailUrl: cloudinary.url(result.public_id, {
         secure: true,
-        width: 450,
-        height: 600,
+        width: 600,
+        height: 800,
         crop: 'fill',
-        quality: 'auto',
+        quality: 'auto:best',
         fetch_format: 'auto',
       }),
     };
