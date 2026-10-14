@@ -1,7 +1,10 @@
 import "dotenv/config";
+import net from "node:net";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { uploadImageFromUrl } from "../../src/utils/cloudinary.js";
+
+net.setDefaultAutoSelectFamily(false);
 
 const prisma = new PrismaClient({ 
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL }) 
