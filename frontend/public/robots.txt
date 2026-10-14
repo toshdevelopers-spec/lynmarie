@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /my-account
+Disallow: /order-confirmation
+
+Sitemap: https://www.lynmarieboutique.com/sitemap.xml
