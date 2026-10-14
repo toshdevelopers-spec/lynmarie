@@ -14,12 +14,21 @@ export async function uploadImageToCloudinary(imageUrl, options = {}) {
       ...options,
     });
     return {
-      url: result.secure_url,
+      url: cloudinary.url(result.public_id, {
+        secure: true,
+        width: 1600,
+        crop: 'limit',
+        quality: 'auto',
+        fetch_format: 'auto',
+      }),
       publicId: result.public_id,
       thumbnailUrl: cloudinary.url(result.public_id, {
-        width: 300,
-        height: 300,
+        secure: true,
+        width: 450,
+        height: 600,
         crop: 'fill',
+        quality: 'auto',
+        fetch_format: 'auto',
       }),
     };
   } catch (error) {

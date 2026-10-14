@@ -27,8 +27,10 @@ const ProductCard = ({ product }) => {
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
         {mainImage ? (
           <img
-            src={mainImage.src}
+            src={mainImage.thumbnail || mainImage.src}
             alt={mainImage.alt || product.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
         ) : (

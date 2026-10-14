@@ -61,7 +61,7 @@ const NewArrivals = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product) => {
-            const imageUrl = product.images?.[0]?.src || '/3.png';
+            const imageUrl = product.images?.[0]?.thumbnail || product.images?.[0]?.src || '/3.png';
             const hasSale = product.on_sale && product.sale_price;
             const price = hasSale ? product.sale_price : product.price;
             const regularPrice = product.regular_price;

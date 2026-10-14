@@ -128,8 +128,10 @@ const Product = () => {
                     }`}
                   >
                     <img
-                      src={image.src}
+                      src={image.thumbnail || image.src}
                       alt={image.alt || `${product.name} ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   </button>
