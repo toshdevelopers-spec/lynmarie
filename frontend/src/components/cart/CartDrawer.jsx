@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 import { Link } from 'react-router-dom';
-import { fallbackProductImage } from '../../utils/images';
+import { hideBrokenProductImage } from '../../utils/images';
 
 const CartDrawer = () => {
   const { cartItems, cartCount, cartTotal, isCartOpen, setIsCartOpen, updateCartItem, removeCartItem } = useCart();
@@ -84,7 +84,7 @@ const CartDrawer = () => {
                         {mainImage && (
                           <img
                             src={mainImage.src || mainImage}
-                            onError={fallbackProductImage}
+                            onError={hideBrokenProductImage}
                             alt={mainImage.alt || product.name}
                             className="w-20 h-20 object-cover rounded-lg"
                           />

@@ -1,6 +1,7 @@
-export function fallbackProductImage(event) {
-  const image = event.currentTarget;
-  if (image.dataset.fallbackApplied) return;
-  image.dataset.fallbackApplied = "true";
-  image.src = "/images/stylish-woman-with-shopping-bags.webp";
+export function hideBrokenProductImage(event) {
+  event.currentTarget.remove();
+}
+
+export function isRepresentativeProductImage(image) {
+  return Boolean(image?.src?.includes('/open-source/pexels-') || image?.thumbnail?.includes('/open-source/pexels-'));
 }

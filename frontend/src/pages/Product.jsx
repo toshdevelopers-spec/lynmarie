@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fallbackProductImage } from '../utils/images';
+import { hideBrokenProductImage, isRepresentativeProductImage } from '../utils/images';
 import { useProduct } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
 import { formatPrice } from '../utils/formatPrice';
@@ -104,18 +104,19 @@ const Product = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Images */}
           <div className="space-y-4">
-            <div className="aspect-square bg-white rounded-2xl overflow-hidden shadow-sm">
+            <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-sm">
               {mainImage ? (
                 <img
                   src={mainImage.src}
-                  onError={fallbackProductImage}
+                  onError={hideBrokenProductImage}
                   alt={mainImage.alt || product.name}
                   className="w-full h-full object-cover"
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-purple-50">
-                  <span className="text-8xl">👗</span>
-                </div>
+              ) : null}
+              {isRepresentativeProductImage(mainImage) && (
+                <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-xs text-white">
+                  Representative photo
+                </span>
               )}
             </div>
             
@@ -131,7 +132,7 @@ const Product = () => {
                   >
                     <img
                       src={image.thumbnail || image.src}
-                      onError={fallbackProductImage}
+                      onError={hideBrokenProductImage}
                       alt={image.alt || `${product.name} ${index + 1}`}
                       loading="lazy"
                       decoding="async"

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { fallbackProductImage } from '../utils/images';
+import { hideBrokenProductImage, isRepresentativeProductImage } from '../utils/images';
 import { useGetProductsQuery } from '../services/storefrontApi';
 import Loader from './ui/Loader';
 import ErrorMessage from './ui/ErrorMessage';
@@ -62,7 +62,7 @@ const NewArrivals = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {products.map((product) => {
-            const imageUrl = product.images?.[0]?.thumbnail || product.images?.[0]?.src || '/3.png';
+            const imageUrl = product.images?.[0]?.thumbnail || product.images?.[0]?.src;
             const hasSale = product.on_sale && product.sale_price;
             const price = hasSale ? product.sale_price : product.price;
             const regularPrice = product.regular_price;
@@ -76,12 +76,17 @@ const NewArrivals = () => {
                 <div className="relative aspect-[3/4] overflow-hidden">
                   <img
                     src={imageUrl}
-                    onError={fallbackProductImage}
+                    onError={hideBrokenProductImage}
                     alt={product.name}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
+                  {isRepresentativeProductImage(product.images?.[0]) && (
+                    <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-xs text-white">
+                      Representative photo
+                    </span>
+                  )}
                   {hasSale && (
                     <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
                       Sale

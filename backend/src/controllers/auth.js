@@ -27,6 +27,9 @@ export const login = asyncHandler(async (req, res) => {
 export const me = (req, res) => res.json({ success: true, data: publicUser(req.user) });
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = z.object({ email: z.string().email() }).parse(req.body);
+  if (process.env.NODE_ENV === "production" && !process.env.RESEND_API_KEY) {
+    return res.status(503).json({ success: false, message: "Password reset email is temporarily unavailable. Please contact the store for help." });
+  }
   const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
   let resetToken;
   if (user) {

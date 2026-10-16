@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { formatPrice } from '../utils/formatPrice';
 import { useCart } from '../hooks/useCart';
-import { fallbackProductImage } from '../utils/images';
+import { hideBrokenProductImage, isRepresentativeProductImage } from '../utils/images';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -29,16 +29,17 @@ const ProductCard = ({ product }) => {
         {mainImage ? (
           <img
             src={mainImage.thumbnail || mainImage.src}
-            onError={fallbackProductImage}
+            onError={hideBrokenProductImage}
             alt={mainImage.alt || product.name}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-purple-50">
-            <span className="text-6xl">👗</span>
-          </div>
+        ) : null}
+        {isRepresentativeProductImage(mainImage) && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-xs text-white">
+            Representative photo
+          </span>
         )}
         
         {/* Sale Badge */}
