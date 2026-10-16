@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { fallbackProductImage } from '../utils/images';
 import { useProduct } from '../hooks/useProducts';
 import { useCart } from '../hooks/useCart';
 import { formatPrice } from '../utils/formatPrice';
@@ -107,6 +108,7 @@ const Product = () => {
               {mainImage ? (
                 <img
                   src={mainImage.src}
+                  onError={fallbackProductImage}
                   alt={mainImage.alt || product.name}
                   className="w-full h-full object-cover"
                 />
@@ -129,6 +131,7 @@ const Product = () => {
                   >
                     <img
                       src={image.thumbnail || image.src}
+                      onError={fallbackProductImage}
                       alt={image.alt || `${product.name} ${index + 1}`}
                       loading="lazy"
                       decoding="async"

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
+import { sendPasswordResetEmail } from "../utils/email.js";
 
 const registerSchema = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8), firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional() });
 const publicUser = ({ id, email, firstName, lastName, phone, role }) => ({ id, email, first_name: firstName, last_name: lastName, phone, role });
@@ -31,7 +32,13 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   if (user) {
     resetToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+    await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
     await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 60 * 60 * 1000) } });
+    try {
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      console.error("Password reset email could not be sent:", error.message);
+    }
   }
   const response = { success: true, message: "If an account exists, password reset instructions will be sent." };
   // In development, surface a one-time token for manual local reset; never log it.

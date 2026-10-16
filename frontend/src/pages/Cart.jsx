@@ -4,6 +4,7 @@ import { formatPrice } from '../utils/formatPrice';
 import Loader from '../components/ui/Loader';
 import Button from '../components/ui/Button';
 import ErrorMessage from '../components/ui/ErrorMessage';
+import { fallbackProductImage } from '../utils/images';
 
 const Cart = () => {
   const {
@@ -73,6 +74,7 @@ const Cart = () => {
                       {mainImage && (
                         <img
                           src={mainImage.src}
+                          onError={fallbackProductImage}
                           alt={mainImage.alt || product.name}
                           className="w-24 h-24 object-cover rounded"
                         />

@@ -41,6 +41,7 @@ export const adminService = {
   customers: () => request('get', '/admin/customers'),
   createUser: data => request('post', '/admin/users', data),
   updateUser: (id, data) => request('patch', `/admin/users/${id}`, data),
+  sendUserPasswordReset: id => request('post', `/admin/users/${id}/password-reset`, {}),
   deleteUser: id => request('delete', `/admin/users/${id}`),
   orders: () => request('get', '/admin/orders'),
   setOrderStatus: (id, status) => request('patch', `/admin/orders/${id}/status`, { status }),

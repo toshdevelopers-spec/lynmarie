@@ -3,6 +3,8 @@ import { z } from "zod";
 import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
+import crypto from "node:crypto";
+import { sendPasswordResetEmail } from "../utils/email.js";
 
 const productInclude = { images: { orderBy: { position: "asc" } }, categories: { include: { category: true } }, brand: true };
 const slugify = value => value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -107,6 +109,21 @@ export const updateUser = asyncHandler(async (req, res) => {
   if ((current.email.toLowerCase() === "adelewigitz@gmail.com" || (!isOwner && current.role === "ADMIN") || (input.role === "ADMIN" && !isOwner)) && (input.role !== undefined || input.isActive === false)) return res.status(403).json({ success: false, message: "Only the store owner can change administrator access" });
   const row = await prisma.user.update({ where: { id }, data: input, select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, isActive: true } });
   res.json({ success: true, data: row });
+});
+export const sendUserPasswordReset = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const user = await prisma.user.findUniqueOrThrow({ where: { id }, select: { id: true, email: true } });
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
+  await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 60 * 60 * 1000) } });
+  try {
+    await sendPasswordResetEmail(user.email, token);
+  } catch (error) {
+    console.error("Administrator password reset email could not be sent:", error.message);
+    return res.status(503).json({ success: false, message: "Reset email could not be delivered. Check the email provider and sender domain configuration." });
+  }
+  res.json({ success: true, message: "Password reset email sent." });
 });
 export const deleteUser = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id); const user = await prisma.user.findUniqueOrThrow({ where: { id } });

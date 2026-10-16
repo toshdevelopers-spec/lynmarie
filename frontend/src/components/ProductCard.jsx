@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart } from 'lucide-react';
 import { formatPrice } from '../utils/formatPrice';
 import { useCart } from '../hooks/useCart';
+import { fallbackProductImage } from '../utils/images';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -28,6 +29,7 @@ const ProductCard = ({ product }) => {
         {mainImage ? (
           <img
             src={mainImage.thumbnail || mainImage.src}
+            onError={fallbackProductImage}
             alt={mainImage.alt || product.name}
             loading="lazy"
             decoding="async"

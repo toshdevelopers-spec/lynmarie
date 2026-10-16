@@ -9,10 +9,11 @@ import ErrorMessage from '../../components/ui/ErrorMessage';
 const ForgotPassword = () => {
   const { forgotPassword, resetPassword, loading } = useAuth();
   const [email, setEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
+  const [resetToken, setResetToken] = useState(() => new URLSearchParams(window.location.search).get('token') || '');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
   const [emailError, setEmailError] = useState('');
 
   const handleChange = (e) => {
@@ -24,6 +25,7 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setResetComplete(false);
 
     if (!email.trim()) {
       setEmailError('Email is required');
@@ -51,8 +53,10 @@ const ForgotPassword = () => {
     if (result.success) {
       setResetToken('');
       setNewPassword('');
-      setSuccess(false);
-      setError('Password reset. You can now sign in.');
+      setSuccess(true);
+      setResetComplete(true);
+      window.history.replaceState({}, '', window.location.pathname);
+      setError(null);
     } else setError(result.error);
   };
 
@@ -66,19 +70,16 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        {success ? (
+        {resetToken ? (
+          <form className="mt-8 space-y-6" onSubmit={handleReset}>
+            {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
+            <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
+            <Button type="submit" loading={loading} className="w-full">Set New Password</Button>
+          </form>
+        ) : success ? (
           <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
             {error && <p className="mb-3 text-center text-red-600">{error}</p>}
-            <p className="text-center">
-              If an account exists, password reset instructions will be sent.
-            </p>
-            {resetToken && (
-              <form className="mt-5 space-y-3" onSubmit={handleReset}>
-                <p className="text-sm">Development reset: choose a new password below.</p>
-                <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
-                <Button type="submit" loading={loading} className="w-full">Set New Password</Button>
-              </form>
-            )}
+            <p className="text-center">{resetComplete ? 'Your password has been reset. You can now sign in.' : 'If an account exists, password reset instructions will be sent.'}</p>
             <div className="mt-4 text-center">
               <Link to="/auth/login" className="text-[#4c00b0] hover:text-[#4c00b0] font-medium">
                 Back to login

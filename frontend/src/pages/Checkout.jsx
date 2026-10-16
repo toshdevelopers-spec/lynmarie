@@ -7,6 +7,7 @@ import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { checkoutService } from '../services/checkout';
+import { fallbackProductImage } from '../utils/images';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -274,6 +275,7 @@ const Checkout = () => {
                       {mainImage && (
                         <img
                           src={mainImage.src}
+                          onError={fallbackProductImage}
                           alt={mainImage.alt || product.name}
                           className="w-16 h-16 object-cover rounded"
                         />

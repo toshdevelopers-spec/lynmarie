@@ -79,6 +79,7 @@ router.delete("/admin/categories/:id", ...adminOnly, admin.deleteCategory);
 router.get("/admin/customers", ...adminOnly, admin.customers);
 router.post("/admin/users", ...adminOnly, admin.createUser);
 router.patch("/admin/users/:id", ...adminOnly, admin.updateUser);
+router.post("/admin/users/:id/password-reset", ...adminOnly, admin.sendUserPasswordReset);
 router.delete("/admin/users/:id", ...adminOnly, admin.deleteUser);
 router.get("/admin/orders", ...adminOnly, admin.orders);
 router.patch("/admin/orders/:id/status", ...adminOnly, admin.setOrderStatus);

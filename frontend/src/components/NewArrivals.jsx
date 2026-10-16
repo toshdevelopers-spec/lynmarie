@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { fallbackProductImage } from '../utils/images';
 import { useGetProductsQuery } from '../services/storefrontApi';
 import Loader from './ui/Loader';
 import ErrorMessage from './ui/ErrorMessage';
@@ -75,6 +76,7 @@ const NewArrivals = () => {
                 <div className="relative aspect-[3/4] overflow-hidden">
                   <img
                     src={imageUrl}
+                    onError={fallbackProductImage}
                     alt={product.name}
                     loading="lazy"
                     decoding="async"
