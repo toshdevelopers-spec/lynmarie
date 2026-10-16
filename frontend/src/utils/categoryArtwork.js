@@ -1,11 +1,11 @@
 const art = {
-  kids: '/images/kids-dresses.webp',
+  kids: '/images/collections/kids-dresses.webp',
   jackets: '/images/sassy-chic-woman-stands-with-self-assured-expression-puts-trendy-shades-looks-confidently-dressed-fashion-luxury-clothes-last-collection-ready-party-date-street-style.webp',
   tops: '/images/positive-afro-american-woman-turns-from-camera-aside-has-cheerful-expression-stands-against-clothing-rail-has-phone-talk.webp',
-  occasion: '/images/wedding.webp',
+  occasion: '/images/collections/wedding-unsplash.webp',
   sets: '/images/two-piece-sets.webp',
-  shopping: '/images/sales.webp',
-  apparel: '/images/woman-surrounded-by-clothing-pile.webp',
+  shopping: '/images/collections/sale-unsplash.webp',
+  apparel: '/hero/everyday.webp',
 };
 
 export function categoryArtwork(category) {

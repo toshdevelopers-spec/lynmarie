@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 import Loader from '../components/ui/Loader';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { Filter, Grid3X3, List } from 'lucide-react';
+import { setPageSeo } from '../utils/pageSeo';
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -27,6 +28,12 @@ const Shop = () => {
   const clearFilters = () => { setMinPrice(''); setMaxPrice(''); setSort('date_desc'); if (onSale) { const next = new URLSearchParams(searchParams); next.delete('on_sale'); setSearchParams(next); } };
 
   const { products, loading, error } = useProducts(params);
+  const categoryName = categorySlug ? categorySlug.replace(/-/g, ' ') : '';
+  useEffect(() => {
+    const title = search ? `Search women's clothing | LynMarie Boutique` : onSale ? `Sale on Women's Clothes in Kenya | LynMarie Boutique` : categoryName ? `${categoryName.replace(/\b\w/g, letter => letter.toUpperCase())} in Kenya | LynMarie Boutique` : `Shop Imported Women's Clothing in Kenya | LynMarie Boutique`;
+    const description = search ? `Browse LynMarie Boutique results for ${search}. Explore imported women's dresses, jumpsuits, suits and fashion in Kenya.` : onSale ? `Shop sale styles at LynMarie Boutique in Nairobi. Find imported women's dresses, outfits and occasionwear at reduced prices while available.` : categoryName ? `Shop ${categoryName} for women at LynMarie Boutique. Browse imported styles online in Kenya, see current colours, sizes and prices, and choose delivery or Nairobi shop collection.` : `Shop imported women's clothes online in Kenya at LynMarie Boutique. Explore dresses, jumpsuits, trouser suits, tops and occasionwear at great prices.`;
+    return setPageSeo({ title, description, path: categorySlug ? `/category/${categorySlug}` : '/shop', robots: search || onSale ? 'noindex,follow' : undefined });
+  }, [categorySlug, categoryName, search, onSale]);
 
   return (
     <div className="min-h-screen py-8 bg-purple-50">
@@ -35,11 +42,12 @@ const Shop = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold text-purple-950 mb-2 tracking-wide">
-              {search ? `Search: "${search}"` : onSale ? 'The Sale Edit' : categorySlug ? categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' ') : 'Shop All'}
+              {search ? `Results for “${search}”` : onSale ? 'The Sale Edit' : categorySlug ? categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' ') : 'Imported Women’s Clothing in Kenya'}
             </h1>
             <p className="text-gray-600 font-sans font-light tracking-wide">
-              {loading ? 'Loading products...' : `${products.length} ${products.length === 1 ? 'piece' : 'pieces'} found${search ? ` for “${search}”` : ''}`}
+              {loading ? 'Finding your next favourite...' : `${products.length} ${products.length === 1 ? 'style' : 'styles'}${search ? ` found for “${search}”` : ' available to explore'}`}
             </p>
+            {!search && <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Explore imported women’s fashion in Kenya, from elegant dresses and wedding guest outfits to jumpsuits, ladies’ trouser suits and everyday tops. Compare current prices, sizes and colours, then shop online or collect from our Nairobi boutique.</p>}
           </div>
           
           <div className="flex items-center gap-4 mt-4 md:mt-0">

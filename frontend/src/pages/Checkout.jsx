@@ -36,12 +36,21 @@ const Checkout = () => {
     order_notes: '',
     // Payment
     payment_method: 'cod',
+    payment_reference: '',
+    fulfillment_method: 'DELIVERY',
   });
   const [sameAsBilling, setSameAsBilling] = useState(true);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(current => {
+      if (name === 'fulfillment_method') return {
+        ...current,
+        fulfillment_method: value,
+        payment_method: value === 'PICKUP' && current.payment_method === 'cod' ? 'pay_on_pickup' : value === 'DELIVERY' && current.payment_method === 'pay_on_pickup' ? 'cod' : current.payment_method,
+      };
+      return { ...current, [name]: value };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -73,6 +82,8 @@ const Checkout = () => {
         shipping,
         notes: formData.order_notes,
         payment_method: formData.payment_method,
+        payment_reference: formData.payment_reference,
+        fulfillment_method: formData.fulfillment_method,
       });
       await clearCart();
       navigate('/order-confirmation', { state: { order } });
@@ -147,7 +158,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_address_1}
                   onChange={handleChange}
-                  required
+                  required={formData.fulfillment_method === 'DELIVERY'}
                   className="md:col-span-2"
                 />
                 <Input
@@ -156,7 +167,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_city}
                   onChange={handleChange}
-                  required
+                  required={formData.fulfillment_method === 'DELIVERY'}
                 />
                 <Input
                   name="billing_county"
@@ -176,8 +187,22 @@ const Checkout = () => {
               </div>
             </div>
 
-            {/* Shipping Details */}
             <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">How would you like to receive your order?</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer ${formData.fulfillment_method === 'DELIVERY' ? 'border-[#4c00b0] bg-purple-50' : 'border-gray-200'}`}>
+                  <input type="radio" name="fulfillment_method" value="DELIVERY" checked={formData.fulfillment_method === 'DELIVERY'} onChange={handleChange} />
+                  <span><b className="block text-gray-900">Delivery</b><small className="text-gray-600">We deliver to your address.</small></span>
+                </label>
+                <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer ${formData.fulfillment_method === 'PICKUP' ? 'border-[#4c00b0] bg-purple-50' : 'border-gray-200'}`}>
+                  <input type="radio" name="fulfillment_method" value="PICKUP" checked={formData.fulfillment_method === 'PICKUP'} onChange={handleChange} />
+                  <span><b className="block text-gray-900">Collect from the shop</b><small className="text-gray-600">Pay online or pay when you collect.</small></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Shipping Details */}
+            {formData.fulfillment_method === 'DELIVERY' && <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Shipping Details</h2>
                 <label className="flex items-center gap-2">
@@ -243,7 +268,7 @@ const Checkout = () => {
                   />
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Order Notes */}
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -315,7 +340,7 @@ const Checkout = () => {
               <div className="mt-6">
                 <h3 className="font-medium text-gray-900 mb-3">Payment Method</h3>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#4c00b0] transition-colors">
+                  {formData.fulfillment_method === 'DELIVERY' && <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#4c00b0] transition-colors">
                     <input
                       type="radio"
                       name="payment_method"
@@ -325,7 +350,11 @@ const Checkout = () => {
                       className="text-[#4c00b0] focus:ring-[#4c00b0]"
                     />
                     <span className="text-sm">Cash on Delivery</span>
-                  </label>
+                  </label>}
+                  {formData.fulfillment_method === 'PICKUP' && <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#4c00b0] transition-colors">
+                    <input type="radio" name="payment_method" value="pay_on_pickup" checked={formData.payment_method === 'pay_on_pickup'} onChange={handleChange} />
+                    <span className="text-sm text-gray-900">Pay when collecting at the shop</span>
+                  </label>}
                   <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-[#4c00b0] transition-colors">
                     <input
                       type="radio"
@@ -340,11 +369,13 @@ const Checkout = () => {
                 </div>
                 {formData.payment_method === 'mpesa' && (
                   <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-gray-800">
-                    <p className="font-semibold">M-Pesa payment details</p>
+                    <p className="font-semibold">Pay by M-Pesa before {formData.fulfillment_method === 'PICKUP' ? 'collection' : 'delivery'}</p>
                     <p className="mt-1">Paybill: <span className="font-medium">400200</span></p>
                     <p>Account number: <span className="font-medium">851561</span></p>
+                    <Input name="payment_reference" label="M-Pesa code (if already paid)" value={formData.payment_reference} onChange={handleChange} placeholder="e.g. QWE123ABC" />
                   </div>
                 )}
+                {formData.payment_method === 'pay_on_pickup' && <p className="mt-3 rounded-lg bg-amber-50 p-4 text-sm text-gray-800">Your items will be reserved for shop collection. The seller will record your payment when you arrive.</p>}
               </div>
 
               <Button

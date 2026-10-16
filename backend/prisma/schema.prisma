@@ -8,6 +8,7 @@ datasource db {
 
 enum UserRole {
   CUSTOMER
+  SELLER
   ADMIN
 }
 
@@ -44,6 +45,7 @@ model User {
   resetTokens  PasswordResetToken[]
   reviews      Review[]
   storeEvents  StoreEvent[]
+  posOrders    Order[]     @relation("PosSeller")
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -95,6 +97,7 @@ model Product {
   shortDescription String?
 
   sku             String?       @unique
+  barcode         String?       @unique
 
   price           Decimal       @db.Decimal(12, 2)
   regularPrice    Decimal?      @db.Decimal(12, 2)
@@ -300,6 +303,15 @@ model Order {
 
   paymentMethod     String?
   paymentReference  String?
+  paymentStatus    String     @default("PENDING")
+  amountPaid       Decimal    @default(0) @db.Decimal(12, 2)
+  amountTendered   Decimal?   @db.Decimal(12, 2)
+  orderType         String     @default("ONLINE")
+  fulfillmentMethod String    @default("DELIVERY")
+  pickedUpAt        DateTime?
+  sellerId          Int?
+  seller            User?      @relation("PosSeller", fields: [sellerId], references: [id], onDelete: SetNull)
+  discountReason    String?
   notes             String?
 
   items             OrderItem[]
@@ -310,6 +322,9 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([orderType, createdAt])
+  @@index([fulfillmentMethod, paymentStatus])
+  @@index([sellerId, createdAt])
   @@map("orders")
 }
 
@@ -371,6 +386,7 @@ model OrderItem {
 
   unitPrice     Decimal   @db.Decimal(12, 2)
   totalPrice    Decimal   @db.Decimal(12, 2)
+  variantDetails String?
 
   createdAt     DateTime  @default(now())
 

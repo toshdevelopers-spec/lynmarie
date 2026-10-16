@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Phone, Mail, MapPin } from 'lucide-react';
 import { api } from '../services/api';
+import { usePageSeo } from '../hooks/usePageSeo';
+
+const contactSeo = { title: 'Contact LynMarie Boutique | Jamia Mall, Nairobi', description: 'Visit LynMarie Boutique at Jamia Mall, Shop F56, Nairobi. Get directions, call or WhatsApp 0794 071233, or email us about women’s clothing, orders and shop collection.', path: '/contact' };
 
 const Contact = () => {
+  usePageSeo(contactSeo);
   const [form, setForm] = useState({ name: '', email: '', message: '' });
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -21,7 +25,7 @@ const Contact = () => {
             Contact Us
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto font-sans font-light tracking-wide">
-            We'd love to hear from you. Get in touch with us.
+            Ask us about sizes, colours, current styles, online orders, delivery or collecting your purchase from our Nairobi shop.
           </p>
         </div>
 

@@ -28,6 +28,7 @@ const FAQ = lazy(() => import('./pages/FAQ'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const SellerDashboard = lazy(() => import('./pages/seller/SellerDashboard'));
 import { useAuth } from './hooks/useAuth';
 import { track } from './services/tracking';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
@@ -38,10 +39,16 @@ function AdminOnly() {
   return user?.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/auth/login" replace />;
 }
 
+function SellerOnly() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-[60vh] grid place-items-center">Loading your access…</div>;
+  return ['ADMIN', 'SELLER'].includes(user?.role) ? <SellerDashboard /> : <Navigate to="/auth/login" replace />;
+}
+
 function StoreAnalytics() {
   const location = useLocation();
   useEffect(() => {
-    if (location.pathname.startsWith('/admin')) return;
+    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller')) return;
     track('PAGE_VIEW', { path: location.pathname });
     const term = new URLSearchParams(location.search).get('search');
     if (term) track('SEARCH', { term: term.slice(0, 120) });
@@ -51,8 +58,17 @@ function StoreAnalytics() {
 
 function AppContent() {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
+  const isStaffDashboard = location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller');
   const isHome = location.pathname === '/';
+
+  useEffect(() => {
+    const privatePage = /^\/(auth|admin|seller|cart|checkout|my-account|order-confirmation)(\/|$)/.test(location.pathname);
+    let robots = document.head.querySelector('meta[name="robots"]');
+    if (privatePage) {
+      if (!robots) { robots = document.createElement('meta'); robots.name = 'robots'; document.head.appendChild(robots); }
+      robots.content = 'noindex,follow';
+    } else if (robots?.content === 'noindex,follow') robots.remove();
+  }, [location.pathname]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -64,12 +80,13 @@ function AppContent() {
 
   return <>
     <StoreAnalytics />
-    <div className={isAdmin ? 'min-h-screen' : `storefront-shell min-h-screen flex flex-col${isHome ? ' is-home' : ''}`}>
-      {!isAdmin && <Navbar />}
+    <div className={isStaffDashboard ? 'min-h-screen' : `storefront-shell min-h-screen flex flex-col${isHome ? ' is-home' : ''}`}>
+      {!isStaffDashboard && <Navbar />}
       <main className="flex-1">
         <Suspense fallback={<div className="route-loading" aria-label="Loading page" />}>
           <Routes>
                 <Route path="/admin" element={<AdminOnly />} />
+                <Route path="/seller" element={<SellerOnly />} />
                 <Route path="/" element={<Home />} />
                 <Route path="/collections" element={<Collections />} />
                 <Route path="/shop" element={<Shop />} />
@@ -107,9 +124,9 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      {!isAdmin && <Footer />}
-      {!isAdmin && <CartDrawer />}
-      {!isAdmin && <FloatingWhatsApp />}
+      {!isStaffDashboard && <Footer />}
+      {!isStaffDashboard && <CartDrawer />}
+      {!isStaffDashboard && <FloatingWhatsApp />}
     </div>
   </>;
 }

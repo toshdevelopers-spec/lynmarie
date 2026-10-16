@@ -70,7 +70,7 @@ const Cart = () => {
 
                 return (
                   <div key={item.key} className="flex gap-4 bg-white p-4 rounded-lg shadow-sm">
-                    <Link to={`/product/${product.id}`} className="flex-shrink-0">
+                    <Link to={`/product/${product.slug || product.id}`} className="flex-shrink-0">
                       {mainImage && (
                         <img
                           src={mainImage.src}
@@ -82,7 +82,7 @@ const Cart = () => {
                     </Link>
 
                     <div className="flex-1">
-                      <Link to={`/product/${product.id}`}>
+                      <Link to={`/product/${product.slug || product.id}`}>
                         <h3 className="font-medium text-gray-900 hover:text-[#4c00b0] transition-colors">
                           {product.name}
                         </h3>

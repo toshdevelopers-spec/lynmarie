@@ -4,6 +4,14 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://lynmarie-backend.vercel.app/api/seo/sitemap.xml"
+    },
+    {
+      "source": "/product/:slug",
+      "destination": "/product/:slug.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

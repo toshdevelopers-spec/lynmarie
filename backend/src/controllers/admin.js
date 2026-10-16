@@ -6,18 +6,39 @@ import { asyncHandler } from "../middleware/errors.js";
 import crypto from "node:crypto";
 import { sendPasswordResetEmail } from "../utils/email.js";
 
-const productInclude = { images: { orderBy: { position: "asc" } }, categories: { include: { category: true } }, brand: true };
+const productInclude = { images: { orderBy: { position: "asc" } }, categories: { include: { category: true } }, attributes: { include: { attribute: true }, orderBy: { attributeId: "asc" } }, brand: true };
 const slugify = value => value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const uniqueProductSlug = async (value, excludeId) => {
+  const base = slugify(value) || `product-${Date.now()}`;
+  let candidate = base;
+  let suffix = 2;
+  while (await prisma.product.findFirst({ where: { slug: candidate, ...(excludeId ? { id: { not: excludeId } } : {}) }, select: { id: true } })) {
+    candidate = `${base}-${suffix++}`;
+  }
+  return candidate;
+};
 const productInput = z.object({
   name: z.string().trim().min(1).max(250), slug: z.string().trim().optional(), description: z.string().optional().nullable(),
-  shortDescription: z.string().optional().nullable(), sku: z.string().trim().max(100).optional().nullable().transform(value => value || null), price: z.coerce.number().min(0),
+  shortDescription: z.string().optional().nullable(), sku: z.string().trim().max(100).optional().nullable().transform(value => value || null), barcode: z.string().trim().max(100).optional().nullable().transform(value => value || null), price: z.coerce.number().min(0),
   regularPrice: z.coerce.number().min(0).optional().nullable(), salePrice: z.coerce.number().min(0).optional().nullable(),
   status: z.enum(["DRAFT", "PUBLISHED", "PRIVATE"]).default("PUBLISHED"), featured: z.boolean().default(false),
   manageStock: z.boolean().default(true), stockQuantity: z.coerce.number().int().min(0).optional().nullable(),
   stockStatus: z.enum(["IN_STOCK", "OUT_OF_STOCK", "ON_BACKORDER"]).optional(), categoryIds: z.array(z.coerce.number().int().positive()).default([]),
-  imageUrls: z.array(z.string().url()).default([]), imageThumbnails: z.array(z.string().url()).optional(), metaTitle: z.string().max(250).optional().nullable(), metaDescription: z.string().max(500).optional().nullable(),
+  imageUrls: z.array(z.string().url()).max(30).default([]), imageThumbnails: z.array(z.string().url().nullable()).max(30).optional(), metaTitle: z.string().max(250).optional().nullable(), metaDescription: z.string().max(500).optional().nullable(),
+  attributes: z.array(z.object({ name: z.string().trim().min(1).max(80), values: z.array(z.string().trim().min(1).max(100)).max(100) })).max(10).optional(),
   brandId: z.coerce.number().int().positive().optional().nullable(),
 }).superRefine((v, ctx) => { if (v.salePrice != null && v.regularPrice != null && v.salePrice >= v.regularPrice) ctx.addIssue({ code: "custom", path: ["salePrice"], message: "Sale price must be lower than regular price" }); });
+
+async function replaceProductAttributes(tx, productId, attributes) {
+  await tx.productAttributeValue.deleteMany({ where: { productId } });
+  for (const spec of attributes) {
+    const name = spec.name.trim();
+    let attribute = await tx.attribute.findFirst({ where: { name: { equals: name, mode: "insensitive" } } });
+    if (!attribute) attribute = await tx.attribute.create({ data: { name, slug: `pa_${slugify(name)}` } });
+    const values = [...new Set(spec.values.map(value => value.trim()).filter(Boolean))];
+    if (values.length) await tx.productAttributeValue.createMany({ data: values.map(value => ({ productId, attributeId: attribute.id, value })) });
+  }
+}
 
 export const dashboard = asyncHandler(async (req, res) => {
   const [products, customers, orders, reviews, inquiries, visitors, cartAdds, lowStock] = await Promise.all([
@@ -57,20 +78,29 @@ export const productImageSignature = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { cloudName, apiKey, ...params, signature } });
 });
 export const createProduct = asyncHandler(async (req, res) => {
-  const input = productInput.parse(req.body); const { categoryIds, imageUrls, imageThumbnails, ...fields } = input;
-  const slug = fields.slug || slugify(fields.name) || `product-${Date.now()}`;
-  const row = await prisma.product.create({ data: {
-    ...fields, slug, price: fields.salePrice ?? fields.price, regularPrice: fields.regularPrice ?? fields.price,
-    stockStatus: fields.stockStatus || ((fields.stockQuantity ?? 0) > 0 ? "IN_STOCK" : "OUT_OF_STOCK"),
-    categories: { create: categoryIds.map(categoryId => ({ category: { connect: { id: categoryId } } })) },
-    images: { create: imageUrls.map((url, position) => ({ url, thumbnailUrl: imageThumbnails?.[position] || null, position, altText: fields.name })) },
-  }, include: productInclude });
+  const input = productInput.parse(req.body); const { categoryIds, imageUrls, imageThumbnails, attributes, ...fields } = input;
+  const slug = await uniqueProductSlug(fields.slug || fields.name);
+  const row = await prisma.$transaction(async tx => {
+    const created = await tx.product.create({ data: {
+      ...fields, slug, price: fields.salePrice ?? fields.price, regularPrice: fields.regularPrice ?? fields.price,
+      stockStatus: fields.stockStatus || ((fields.stockQuantity ?? 0) > 0 ? "IN_STOCK" : "OUT_OF_STOCK"),
+      categories: { create: categoryIds.map(categoryId => ({ category: { connect: { id: categoryId } } })) },
+      images: { create: imageUrls.map((url, position) => ({ url, thumbnailUrl: imageThumbnails?.[position] || null, position, altText: fields.name })) },
+    } });
+    if (attributes) await replaceProductAttributes(tx, created.id, attributes);
+    return tx.product.findUnique({ where: { id: created.id }, include: productInclude });
+  });
   res.status(201).json({ success: true, data: row });
 });
 export const updateProduct = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id); const input = productInput.partial().parse(req.body);
-  const { categoryIds, imageUrls, imageThumbnails, ...fields } = input; const update = { ...fields };
-  if (fields.name && !fields.slug) update.slug = slugify(fields.name) || `product-${Date.now()}`;
+  const { categoryIds, imageUrls, imageThumbnails, attributes, ...fields } = input; const update = { ...fields };
+  if (fields.name || fields.slug) {
+    const current = await prisma.product.findUniqueOrThrow({ where: { id }, select: { name: true, slug: true } });
+    const nextSlugSource = fields.slug || (fields.name !== current.name ? fields.name : null);
+    if (nextSlugSource) update.slug = await uniqueProductSlug(nextSlugSource, id);
+    else delete update.slug;
+  }
   if (fields.salePrice !== undefined) update.price = fields.salePrice ?? fields.regularPrice ?? fields.price;
   if (fields.stockQuantity !== undefined && fields.stockStatus === undefined) update.stockStatus = fields.stockQuantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK";
   const row = await prisma.$transaction(async tx => {
@@ -80,7 +110,10 @@ export const updateProduct = asyncHandler(async (req, res) => {
       ...update,
       ...(categoryIds ? { categories: { create: categoryIds.map(categoryId => ({ category: { connect: { id: categoryId } } })) } } : {}),
       ...(imageUrls ? { images: { create: imageUrls.map((url, position) => ({ url, thumbnailUrl: imageThumbnails?.[position] || null, position, altText: fields.name })) } } : {}),
-    }, include: productInclude });
+    } }).then(async updated => {
+      if (attributes) await replaceProductAttributes(tx, id, attributes);
+      return tx.product.findUnique({ where: { id: updated.id }, include: productInclude });
+    });
   });
   res.json({ success: true, data: row });
 });
@@ -91,11 +124,11 @@ export const deleteProduct = asyncHandler(async (req, res) => {
 });
 
 export const customers = asyncHandler(async (req, res) => {
-  const rows = await prisma.user.findMany({ where: { role: { in: ["CUSTOMER", "ADMIN"] } }, select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, isActive: true, createdAt: true, _count: { select: { orders: true } } }, orderBy: { createdAt: "desc" } });
+  const rows = await prisma.user.findMany({ where: { role: { in: ["CUSTOMER", "ADMIN", "SELLER"] } }, select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, isActive: true, createdAt: true, _count: { select: { orders: true } } }, orderBy: { createdAt: "desc" } });
   res.json({ success: true, data: rows });
 });
 export const createUser = asyncHandler(async (req, res) => {
-  const input = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8), firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional(), role: z.enum(["CUSTOMER", "ADMIN"]).default("CUSTOMER") }).parse(req.body);
+  const input = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8), firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional(), role: z.enum(["CUSTOMER", "SELLER", "ADMIN"]).default("CUSTOMER") }).parse(req.body);
   if (input.role === "ADMIN" && req.user.email.toLowerCase() !== "adelewigitz@gmail.com") return res.status(403).json({ success: false, message: "Only the store owner can add administrators" });
   const { password, ...profile } = input;
   const row = await prisma.user.create({ data: { ...profile, passwordHash: await bcrypt.hash(password, 12) }, select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, isActive: true } });
@@ -103,7 +136,7 @@ export const createUser = asyncHandler(async (req, res) => {
 });
 export const updateUser = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
-  const input = z.object({ firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional(), role: z.enum(["CUSTOMER", "ADMIN"]).optional(), isActive: z.boolean().optional() }).parse(req.body);
+  const input = z.object({ firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional(), role: z.enum(["CUSTOMER", "SELLER", "ADMIN"]).optional(), isActive: z.boolean().optional() }).parse(req.body);
   const current = await prisma.user.findUniqueOrThrow({ where: { id } });
   const isOwner = req.user.email.toLowerCase() === "adelewigitz@gmail.com";
   if ((current.email.toLowerCase() === "adelewigitz@gmail.com" || (!isOwner && current.role === "ADMIN") || (input.role === "ADMIN" && !isOwner)) && (input.role !== undefined || input.isActive === false)) return res.status(403).json({ success: false, message: "Only the store owner can change administrator access" });
@@ -131,7 +164,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
   if (user.role === "ADMIN" && req.user.email.toLowerCase() !== "adelewigitz@gmail.com") return res.status(403).json({ success: false, message: "Only the store owner can disable another administrator" });
   res.json({ success: true, data: await prisma.user.update({ where: { id }, data: { isActive: false } }), message: "User access disabled; order history is preserved" });
 });
-export const orders = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.order.findMany({ include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } }) }));
+export const orders = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.order.findMany({ include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } }, seller: { select: { id: true, email: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } }) }));
 export const setOrderStatus = asyncHandler(async (req, res) => {
   const status = z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]).parse(req.body.status);
   const id = z.coerce.number().int().positive().parse(req.params.id);

@@ -7,13 +7,17 @@ import * as auth from "../controllers/auth.js";
 import * as customers from "../controllers/customers.js";
 import * as orders from "../controllers/orders.js";
 import * as admin from "../controllers/admin.js";
+import * as pos from "../controllers/pos.js";
+import * as seo from "../controllers/seo.js";
 import { prisma } from "../config/prisma.js";
 import { z } from "zod";
 
 const router = Router();
 const protect = requireAuth;
 const adminOnly = [protect, requireRole("ADMIN")];
+const posOnly = [protect, requireRole("ADMIN", "SELLER")];
 router.get("/products", asyncHandler(products.index));
+router.get("/seo/sitemap.xml", seo.sitemap);
 router.get("/products/slug/:slug", asyncHandler((req, res) => products.show({ ...req, params: { id: req.params.slug } }, res)));
 router.get("/products/:id", asyncHandler(products.show));
 router.get("/categories", asyncHandler(catalog.categories));
@@ -66,6 +70,10 @@ router.get("/products/:id/reviews", asyncHandler(async (req, res) => {
   res.json({ success: true, data: rows.map(r => ({ id: r.id, product_id: r.productId, reviewer: r.reviewer, review: r.review, rating: r.rating, date_created: r.createdAt })) });
 }));
 router.get("/admin/dashboard", ...adminOnly, admin.dashboard);
+router.get("/pos/inventory", ...posOnly, pos.inventory);
+router.get("/pos/sales", ...posOnly, pos.sales);
+router.post("/pos/sales", ...posOnly, pos.checkoutSale);
+router.post("/pos/pickups/:id/collect", ...posOnly, pos.collectPickupOrder);
 router.get("/admin/cart-activity", ...adminOnly, admin.cartActivity);
 router.post("/admin/product-image-signature", ...adminOnly, admin.productImageSignature);
 router.get("/admin/products", ...adminOnly, admin.products);

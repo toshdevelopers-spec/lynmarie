@@ -77,7 +77,7 @@ const CartDrawer = () => {
                   return (
                     <div key={item.key || item.product_id} className="flex gap-4 border border-purple-100 rounded-lg p-3 hover:shadow-md transition-shadow">
                       <Link
-                        to={`/product/${product.id || product.product_id}`}
+                        to={`/product/${product.slug || product.id || product.product_id}`}
                         onClick={() => setIsCartOpen(false)}
                         className="flex-shrink-0"
                       >
@@ -93,7 +93,7 @@ const CartDrawer = () => {
 
                       <div className="flex-1">
                         <Link
-                          to={`/product/${product.id || product.product_id}`}
+                          to={`/product/${product.slug || product.id || product.product_id}`}
                           onClick={() => setIsCartOpen(false)}
                         >
                           <h3 className="font-serif font-medium text-gray-900 text-sm line-clamp-2 hover:text-[#4c00b0] transition-colors tracking-wide">

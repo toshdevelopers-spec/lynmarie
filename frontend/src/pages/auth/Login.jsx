@@ -46,10 +46,8 @@ const Login = () => {
 
     const result = await login(formData.username, formData.password);
     if (result.success) {
-      // Merge guest cart with user cart
-      if (result.user?.id) {
-        await mergeGuestCart(result.user.id);
-      }
+      try { if (result.user?.id) await mergeGuestCart(result.user.id); }
+      catch (cartError) { console.warn('Signed in successfully; guest cart merge was skipped:', cartError); }
       navigate('/my-account');
     } else {
       setError(result.error);

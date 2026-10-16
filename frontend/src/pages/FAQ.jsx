@@ -1,28 +1,45 @@
+import { usePageSeo } from '../hooks/usePageSeo';
+
+const faqSeo = { title: 'Women’s Fashion Shopping FAQs | LynMarie Boutique Kenya', description: 'Answers about shopping women’s dresses, jumpsuits and trouser suits from LynMarie Boutique: sizes, M-Pesa, delivery, shop collection and returns in Kenya.', path: '/faq' };
+
 const FAQ = () => {
+  usePageSeo(faqSeo);
   const faqs = [
     {
       question: "How do I place an order?",
-      answer: "Simply browse our collection, select your items, add them to cart, and proceed to checkout. You can create an account during checkout or checkout as a guest."
+      answer: "Browse the collection, open a product to review its photos, available size and colour options, then add it to your cart. At checkout you can provide your contact details and choose delivery or collection from our Jamia Mall shop."
+    },
+    {
+      question: "What kind of women’s clothes can I shop at LynMarie Boutique?",
+      answer: "Our Nairobi boutique curates imported women’s clothing such as dresses, dinner and occasion dresses, jumpsuits, two-piece trouser suits, skirts and tops. The live catalogue shows the styles currently available."
+    },
+    {
+      question: "Where is the LynMarie Boutique shop in Nairobi?",
+      answer: "Visit us at Jamia Mall, 1st Floor, Shop F56, Tubman Road and Kimathi Street, Nairobi. You can also choose shop collection for eligible website orders and wait for our confirmation before visiting."
+    },
+    {
+      question: "How do I choose the right dress or clothing size?",
+      answer: "Sizes vary by label and style. Check the options on the individual product page and read our size guide. If you are unsure, send us the product name and your usual size on WhatsApp before ordering."
     },
     {
       question: "What payment methods do you accept?",
-      answer: "We accept M-Pesa, credit/debit cards, and bank transfers. All payments are processed securely."
+      answer: "Online checkout currently offers M-Pesa. For shop collection, eligible orders can be paid when you arrive. At the boutique, ask the seller which cash, card, M-Pesa or bank options are available."
     },
     {
       question: "How long does shipping take?",
-      answer: "Standard shipping takes 3-5 business days. Express shipping (available in major cities) takes 1-2 business days."
+      answer: "Standard delivery is estimated at 3–5 business days after dispatch. Express delivery is estimated at 1–2 business days in supported major cities. See our shipping page for charges and details."
     },
     {
       question: "Can I track my order?",
-      answer: "Yes! Once your order ships, you'll receive a tracking number via email. You can also check your order status in your account."
+      answer: "Sign in and open My Account to review orders linked to your account. Guest shoppers can contact us with their order number and checkout phone number for an update."
     },
     {
       question: "What if the item doesn't fit?",
-      answer: "We offer a 30-day return policy. You can return or exchange items that don't fit, provided they're in original condition with tags attached."
+      answer: "Please check our Returns & Exchanges page for the current return window and item-condition requirements. If you are unsure about fit, contact us before ordering and we can help you review the size information shown for that item."
     },
     {
       question: "Do you offer gift wrapping?",
-      answer: "Yes! We offer beautiful gift wrapping for special occasions. You can select this option during checkout."
+      answer: "Gift wrapping is not currently listed as a checkout option. Contact the boutique before placing your order to ask whether it can be arranged for your selected item."
     }
   ];
 
@@ -34,7 +51,7 @@ const FAQ = () => {
             Frequently Asked Questions
           </h1>
           <p className="text-gray-600 font-sans font-light tracking-wide">
-            Find answers to common questions
+            Practical answers about sizes, prices, M-Pesa, delivery and Nairobi shop collection
           </p>
         </div>
 

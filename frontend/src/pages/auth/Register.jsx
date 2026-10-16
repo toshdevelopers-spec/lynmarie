@@ -9,7 +9,7 @@ import ErrorMessage from '../../components/ui/ErrorMessage';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register, loading, user } = useAuth();
+  const { register, loading } = useAuth();
   const { mergeGuestCart } = useCart();
   const [formData, setFormData] = useState({
     email: '',
@@ -75,10 +75,8 @@ const Register = () => {
     );
 
     if (result.success) {
-      // Merge guest cart with user cart
-      if (user?.id) {
-        await mergeGuestCart(user.id);
-      }
+      try { if (result.user?.id) await mergeGuestCart(result.user.id); }
+      catch (cartError) { console.warn('Account created successfully; guest cart merge was skipped:', cartError); }
       navigate('/my-account');
     } else {
       setError(result.error);

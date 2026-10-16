@@ -22,7 +22,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <Link 
-      to={`/product/${product.id}`}
+      to={`/product/${product.slug || product.id}`}
       className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">

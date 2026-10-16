@@ -9,6 +9,9 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 import Button from '../components/ui/Button';
 import { Minus, Plus, ShoppingCart, Heart, Share2, Star } from 'lucide-react';
 import { track } from '../services/tracking';
+import { setPageSeo } from '../utils/pageSeo';
+
+const textOnly = value => String(value || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 
 const getAttributeOptions = (product, matcher) => [...new Map(
   (product?.attributes || [])
@@ -46,14 +49,19 @@ const Product = () => {
 
   useEffect(() => {
     if (!product) return undefined;
-    const previousTitle = document.title;
-    document.title = product.metaTitle || `${product.name} | LynMarie Boutique`;
-    let description = document.querySelector('meta[name="description"]');
-    if (!description) { description = document.createElement('meta'); description.name = 'description'; document.head.appendChild(description); }
-    const previousDescription = description.content;
-    if (product.metaDescription || product.short_description) description.content = product.metaDescription || product.short_description;
+    const url = `https://www.lynmarieboutique.com/product/${product.slug || product.id}`;
+    const descriptionText = product.metaDescription || product.short_description || textOnly(product.description) || `${product.name} from LynMarie Boutique, a Nairobi women's fashion boutique. Shop online in Kenya.`;
+    const availability = product.stock_status === 'outofstock' ? 'https://schema.org/OutOfStock' : product.stock_status === 'onbackorder' ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock';
+    const schema = {
+      '@context': 'https://schema.org', '@type': 'Product', name: product.name, description: descriptionText,
+      image: (product.images || []).map(image => image.src).filter(Boolean), sku: product.sku || undefined,
+      brand: { '@type': 'Brand', name: 'LynMarie Boutique' },
+      offers: { '@type': 'Offer', url, priceCurrency: 'KES', price: Number(product.price || 0).toFixed(2), availability, itemCondition: 'https://schema.org/NewCondition' },
+      ...(Number(product.rating_count) > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(product.average_rating), reviewCount: Number(product.rating_count) } } : {}),
+    };
+    const restoreSeo = setPageSeo({ title: product.metaTitle || `${product.name} | LynMarie Boutique Kenya`, description: descriptionText, path: `/product/${product.slug || product.id}`, image: product.images?.[0]?.src, jsonLd: schema });
     track('PRODUCT_VIEW', {}, product.id);
-    return () => { document.title = previousTitle; description.content = previousDescription; };
+    return restoreSeo;
   }, [product]);
 
   const handleQuantityChange = (change) => {
@@ -189,7 +197,7 @@ const Product = () => {
             </div>
 
             <p className="text-gray-600 leading-relaxed">
-              {product.short_description || product.description || 'Beautiful piece from Lyn Marie Boutique collection. Made with premium materials for comfort and style.'}
+              {textOnly(product.short_description || product.description) || `${product.name} is part of the LynMarie Boutique edit of imported women's clothing in Kenya. Check the available size and colour options before ordering.`}
             </p>
 
             {/* Only show sizes recorded for this product. */}

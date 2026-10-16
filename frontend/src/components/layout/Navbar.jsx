@@ -143,6 +143,7 @@ const Navbar = () => {
           {/* Right Icons */}
           <div className="flex items-center space-x-2">
             {user?.role === 'ADMIN' && <Link to="/admin" aria-label="Open admin dashboard" title="Admin dashboard" className="storefront-admin-link inline-flex items-center justify-center gap-1 rounded-full px-2 sm:px-3 py-1.5 text-xs font-medium whitespace-nowrap"><LayoutDashboard className="h-3.5 w-3.5" /><span className="hidden sm:inline">Admin</span></Link>}
+            {['ADMIN', 'SELLER'].includes(user?.role) && <Link to="/seller" aria-label="Open shop point of sale" title="Shop point of sale" className="storefront-admin-link inline-flex items-center justify-center gap-1 rounded-full px-2 sm:px-3 py-1.5 text-xs font-medium whitespace-nowrap"><span className="hidden sm:inline">Shop POS</span><span className="sm:hidden">POS</span></Link>}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className="p-1.5 rounded-full text-gray-600 hover:bg-purple-100 hover:text-purple-700 transition-all"
@@ -183,7 +184,7 @@ const Navbar = () => {
                 placeholder="Search for products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-6 py-3 bg-white border-2 border-purple-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#4c00b0] focus:border-[#4c00b0] transition-all shadow-sm font-sans tracking-wide"
+                className="w-full px-6 py-3 bg-white text-gray-900 placeholder:text-gray-500 caret-[#4c00b0] border-2 border-purple-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[#4c00b0] focus:border-[#4c00b0] focus:bg-white transition-all shadow-sm font-sans tracking-wide"
               />
               <button
                 type="submit"
@@ -206,7 +207,7 @@ const Navbar = () => {
                     type="button"
                     aria-expanded={activeDropdown === category.name}
                     onClick={() => setActiveDropdown(activeDropdown === category.name ? null : category.name)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-800 hover:bg-purple-100 rounded-lg font-serif font-medium transition-colors tracking-wide"
+                    className="w-full flex items-center justify-between px-4 py-3 text-gray-900 bg-white hover:bg-purple-100 hover:text-[#3d008f] active:bg-purple-200 active:text-[#3d008f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg font-serif font-medium transition-colors tracking-wide"
                   >
                     {category.name}
                     <ChevronDown className={`w-4 h-4 transition-transform ${activeDropdown === category.name ? 'rotate-180' : ''}`} />
@@ -218,7 +219,7 @@ const Navbar = () => {
                           key={item.name}
                           to={item.path}
                           onClick={() => { setIsMobileMenuOpen(false); setActiveDropdown(null); }}
-                          className="block px-4 py-2 text-gray-700 hover:text-[#4c00b0] hover:bg-purple-100 rounded-lg transition-colors font-serif tracking-wide"
+                          className="block px-4 py-3 text-gray-900 bg-white hover:text-[#3d008f] hover:bg-purple-100 active:text-[#3d008f] active:bg-purple-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg transition-colors font-serif tracking-wide"
                         >
                           {item.name}
                         </Link>
@@ -230,7 +231,7 @@ const Navbar = () => {
               <Link
                 to="/shop?sort=date_desc"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="block px-4 py-3 text-gray-800 hover:bg-purple-100 rounded-lg font-serif font-medium transition-colors tracking-wide"
+                className="block px-4 py-3 text-gray-900 bg-white hover:bg-purple-100 hover:text-[#3d008f] active:bg-purple-200 active:text-[#3d008f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg font-serif font-medium transition-colors tracking-wide"
               >
                 New In
               </Link>

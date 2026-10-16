@@ -70,14 +70,14 @@ const NewArrivals = () => {
             return (
               <Link
                 key={product.id}
-                to={`/product/${product.id}`}
+                to={`/product/${product.slug || product.id}`}
                 className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="relative aspect-[3/4] overflow-hidden">
                   <img
                     src={imageUrl}
                     onError={hideBrokenProductImage}
-                    alt={product.name}
+                    alt={product.images?.[0]?.alt || `${product.name} from LynMarie Boutique, Nairobi, Kenya`}
                     loading="lazy"
                     decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"

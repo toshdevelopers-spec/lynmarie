@@ -40,7 +40,7 @@ export default function CollectionSection() {
             {collections.map(category => (
               <Link key={category.id} to={`/category/${category.slug}`} className="collection-card group">
                 <div className="collection-card-image">
-                  <img src={categoryArtwork(category)} alt={`${category.name} collection`} loading="lazy" decoding="async" />
+                  <img src={categoryArtwork(category)} alt={`${category.name} women’s clothing collection from LynMarie Boutique in Nairobi, Kenya`} loading="lazy" decoding="async" />
                   <span className="collection-card-count">{category._count.products} {category._count.products === 1 ? 'piece' : 'pieces'}</span>
                 </div>
                 <div className="collection-card-copy">

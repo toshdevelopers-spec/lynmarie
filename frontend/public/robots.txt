@@ -6,5 +6,6 @@ Disallow: /cart
 Disallow: /checkout
 Disallow: /my-account
 Disallow: /order-confirmation
+Disallow: /seller
 
 Sitemap: https://www.lynmarieboutique.com/sitemap.xml
