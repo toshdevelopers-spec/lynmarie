@@ -331,13 +331,13 @@ model Order {
 model Review {
   id          Int      @id @default(autoincrement())
   wordpressId Int?     @unique
-  productId   Int
+  productId   Int?
   userId      Int?
   reviewer    String
   review      String
   rating      Int
   approved    Boolean  @default(false)
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   @@index([productId, approved])

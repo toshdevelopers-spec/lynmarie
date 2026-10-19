@@ -197,6 +197,11 @@ export const setReviewApproval = asyncHandler(async (req, res) => {
   const { approved } = z.object({ approved: z.boolean() }).parse(req.body);
   res.json({ success: true, data: await prisma.review.update({ where: { id: z.coerce.number().int().positive().parse(req.params.id) }, data: { approved } }) });
 });
+export const deleteReview = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  await prisma.review.delete({ where: { id } });
+  res.json({ success: true, message: "Review deleted" });
+});
 export const categories = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.category.findMany({ include: { _count: { select: { products: true } } }, orderBy: { name: "asc" } }) }));
 export const createCategory = asyncHandler(async (req, res) => {
   const body = z.object({ name: z.string().trim().min(1).max(150), slug: z.string().optional(), description: z.string().optional() }).parse(req.body);

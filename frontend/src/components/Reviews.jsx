@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Star, Quote } from 'lucide-react';
 import { api } from '../services/api';
-import { useGetProductsQuery, useGetReviewsQuery } from '../services/storefrontApi';
+import { useGetReviewsQuery } from '../services/storefrontApi';
 import Loader from './ui/Loader';
 
 const Reviews = () => {
@@ -9,12 +9,10 @@ const Reviews = () => {
   const [formData, setFormData] = useState({
     rating: 5,
     reviewer: '',
-    reviewer_email: '',
-    review: '',
-    product_id: ''
+    review: ''
   });
-  const { data: reviews = [], isLoading: loading } = useGetReviewsQuery();
-  const { data: products = [] } = useGetProductsQuery({ limit: 100 }, { skip: !showForm });
+  const { data: reviews = [], isLoading: loading, refetch } = useGetReviewsQuery();
+  const [justSubmitted, setJustSubmitted] = useState([]);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -24,10 +22,14 @@ const Reviews = () => {
     setSubmitting(true);
     setSubmitError('');
     try {
-      await api.post('/reviews', { productId: Number(formData.product_id), reviewer: formData.reviewer, reviewer_email: formData.reviewer_email, review: formData.review, rating: formData.rating });
+      const response = await api.post('/reviews', { reviewer: formData.reviewer, review: formData.review, rating: formData.rating });
+      const created = response.data.data;
+      setJustSubmitted(current => [created, ...current.filter(item => item.id !== created.id)]);
       setSubmitSuccess(true);
-      setFormData({ rating: 5, reviewer: '', reviewer_email: '', review: '', product_id: '' });
-      setTimeout(() => setSubmitSuccess(false), 3000);
+      setFormData({ rating: 5, reviewer: '', review: '' });
+      setShowForm(false);
+      refetch();
+      setTimeout(() => setSubmitSuccess(false), 5000);
     } catch (error) {
       setSubmitError(error.response?.data?.message || 'Could not submit your review');
     } finally {
@@ -80,20 +82,8 @@ const Reviews = () => {
         {showForm && (
           <div className="max-w-2xl mx-auto mb-12 bg-white p-8 rounded-2xl shadow-lg border-2 border-purple-100">
             <h3 className="text-2xl font-serif font-bold mb-6 tracking-wide">Share Your Experience</h3>
-            {submitSuccess && (
-              <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg font-sans">
-                Thank you for your review! It will be published after moderation.
-              </div>
-            )}
             <form onSubmit={handleSubmit}>
               {submitError && <p className="mb-4 text-sm text-red-600">{submitError}</p>}
-              <div className="mb-4">
-                <label className="block text-gray-700 font-serif font-medium mb-2 tracking-wide">Product</label>
-                <select required value={formData.product_id} onChange={(e) => setFormData({ ...formData, product_id: e.target.value })} className="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4c00b0] font-sans">
-                  <option value="">Choose a product</option>
-                  {products.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}
-                </select>
-              </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-serif font-medium mb-2 tracking-wide">Rating</label>
                 <div className="flex gap-1">
@@ -109,17 +99,6 @@ const Reviews = () => {
                   onChange={(e) => setFormData({ ...formData, reviewer: e.target.value })}
                   className="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4c00b0] font-sans"
                   placeholder="Enter your name"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 font-serif font-medium mb-2 tracking-wide">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.reviewer_email}
-                  onChange={(e) => setFormData({ ...formData, reviewer_email: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4c00b0] font-sans"
-                  placeholder="Enter your email"
                 />
               </div>
               <div className="mb-6">
@@ -143,9 +122,15 @@ const Reviews = () => {
           </div>
         )}
 
-        {reviews.length > 0 ? (
+        {submitSuccess && (
+          <div role="status" className="max-w-2xl mx-auto mb-8 p-4 rounded-lg bg-green-100 text-green-800 text-center font-sans">
+            Thank you — your review is now visible below.
+          </div>
+        )}
+
+        {[...justSubmitted, ...reviews.filter(review => !justSubmitted.some(item => item.id === review.id))].length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {reviews.map((review) => (
+            {[...justSubmitted, ...reviews.filter(review => !justSubmitted.some(item => item.id === review.id))].slice(0, 6).map((review) => (
               <div
                 key={review.id}
                 className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-100"

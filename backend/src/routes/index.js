@@ -54,11 +54,10 @@ router.post("/orders", optionalAuth, orders.create);
 router.get("/orders", protect, orders.listMine);
 router.get("/orders/:id", protect, orders.showMine);
 router.post("/reviews", asyncHandler(async (req, res) => {
-  const { productId, reviewer, review, rating } = z.object({ productId: z.coerce.number().int().positive(), reviewer: z.string().trim().min(1).max(150), reviewer_email: z.string().email().optional(), review: z.string().trim().min(1).max(5000), rating: z.coerce.number().int().min(1).max(5) }).parse(req.body);
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product) return res.status(404).json({ success: false, message: "Product not found" });
-  const row = await prisma.review.create({ data: { productId: product.id, reviewer, review, rating } });
-  res.status(201).json({ success: true, data: row, message: "Review submitted for moderation" });
+  const { productId, reviewer, review, rating } = z.object({ productId: z.coerce.number().int().positive().optional(), reviewer: z.string().trim().min(1).max(150), reviewer_email: z.string().email().optional(), review: z.string().trim().min(1).max(5000), rating: z.coerce.number().int().min(1).max(5) }).parse(req.body);
+  if (productId && !await prisma.product.findUnique({ where: { id: productId }, select: { id: true } })) return res.status(404).json({ success: false, message: "Product not found" });
+  const row = await prisma.review.create({ data: { productId: productId ?? null, reviewer, review, rating, approved: true } });
+  res.status(201).json({ success: true, data: row, message: "Thank you. Your review is now published." });
 }));
 router.get("/reviews", asyncHandler(async (req, res) => {
   const rows = await prisma.review.findMany({ where: { approved: true }, take: 6, orderBy: { createdAt: "desc" } });
@@ -93,6 +92,7 @@ router.get("/admin/orders", ...adminOnly, admin.orders);
 router.patch("/admin/orders/:id/status", ...adminOnly, admin.setOrderStatus);
 router.get("/admin/reviews", ...adminOnly, admin.reviews);
 router.patch("/admin/reviews/:id/approval", ...adminOnly, admin.setReviewApproval);
+router.delete("/admin/reviews/:id", ...adminOnly, admin.deleteReview);
 router.get("/admin/inquiries", ...adminOnly, admin.inquiries);
 router.patch("/admin/inquiries/:id", ...adminOnly, admin.updateInquiry);
 export default router;

@@ -51,6 +51,7 @@ export const adminService = {
   collectPickup: (id, data) => request('post', `/pos/pickups/${id}/collect`, data),
   reviews: () => request('get', '/admin/reviews'),
   approveReview: (id, approved) => request('patch', `/admin/reviews/${id}/approval`, { approved }),
+  deleteReview: id => request('delete', `/admin/reviews/${id}`),
   inquiries: () => request('get', '/admin/inquiries'),
   updateInquiry: (id, status) => request('patch', `/admin/inquiries/${id}`, { status }),
 };

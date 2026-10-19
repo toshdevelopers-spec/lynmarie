@@ -115,7 +115,7 @@ The export also contains shipping-zone/method, tax, and payment-gateway configur
 - `GET/PATCH /api/customers/me`, `GET /api/customers/me/orders`, `GET /api/customers/me/addresses`, `PUT /api/customers/me/addresses/:type`, `POST /api/customers/me/password`
 - `POST /api/cart` validates and prices a submitted cart; the app currently keeps cart state client-side.
 - `POST /api/orders` creates a server-priced pending order. `GET /api/orders` and `GET /api/orders/:id` are for the authenticated customer's orders.
-- `GET /api/reviews`, `GET /api/products/:id/reviews`, and `POST /api/reviews` (new reviews require moderation).
+- `GET /api/reviews`, `GET /api/products/:id/reviews`, and `POST /api/reviews` (store-wide or product-specific reviews are published immediately).
 - `POST /api/inquiries` stores contact-form messages; `POST /api/events` records anonymous visitor, search, product-view, and cart-add activity.
 - `/api/admin/*` endpoints require an authenticated admin. These manage products, inventory, categories, customers/staff, orders, reviews, enquiries, cart activity, and dashboard summaries.
 
@@ -138,7 +138,7 @@ npm run admin:bootstrap
 
 The only owner account is `adelewigitz@gmail.com`. Sign in through the normal login page, then open `/admin`. Both the route and every management API require the `ADMIN` role; the frontend check is only a convenience, and API authorization is enforced by the backend. The owner can create additional administrators. Other admins can add customers, but cannot grant admin access or disable the owner.
 
-The dashboard provides a left-side navigation for products and stock, shop categories, customer/staff access, orders, cart activity, frequent visitors, reviews, and contact enquiries. Product fields include category links, image URLs, descriptions, sale and regular prices, stock quantity, visibility, and SEO title/description. Removing a product archives it from the storefront so historic order snapshots remain intact. Disabling a user preserves their orders. When a stock-managed order is created, inventory is atomically decremented; a product reaching zero stock is marked out of stock and disappears from public catalog/search/detail results. To put it back on sale, edit its quantity and publish it.
+The dashboard provides a left-side navigation for products and stock, shop categories, customer/staff access, orders, cart activity, frequent visitors, reviews, and contact enquiries. Admins can remove published reviews. Product fields include category links, image URLs, descriptions, sale and regular prices, stock quantity, visibility, and SEO title/description. Removing a product archives it from the storefront so historic order snapshots remain intact. Disabling a user preserves their orders. When a stock-managed order is created, inventory is atomically decremented; a product reaching zero stock is marked out of stock and disappears from public catalog/search/detail results. To put it back on sale, edit its quantity and publish it.
 
 The cart remains browser-local for now; admin cart activity is an event record of additions (product, anonymous visitor ID, quantity, timestamp), not a live synchronized cart. Frequent visitor metrics use a random browser identifier and event counts, not names or email addresses. A submitted contact form is stored as an enquiry in PostgreSQL. Admin-created product images currently use URLs; the existing WordPress product image links are retained by the importer and can be replaced with new media URLs later.
 
