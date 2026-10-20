@@ -27,12 +27,13 @@ export default function Collections() {
             style={{ animationDelay: `${Math.min(index, 7) * 65}ms` }}
           >
             <div className="collection-card-image">
-              <img src={categoryArtwork(category)} alt={`${category.name} women’s clothing collection from LynMarie Boutique in Nairobi, Kenya`} loading="lazy" decoding="async" />
+              <img src={categoryArtwork(category).src} style={{ objectPosition: categoryArtwork(category).position }} alt={categoryArtwork(category).alt} loading="lazy" decoding="async" />
               <span className="collection-card-count">{category._count.products} {category._count.products === 1 ? 'piece' : 'pieces'}</span>
             </div>
             <div className="collection-card-copy">
-              <span className="collection-card-eyebrow">THE LYNMARIE EDIT</span>
+              <span className="collection-card-eyebrow">SHOP THE EDIT</span>
               <h2>{category.name}</h2>
+              <p>{category.description}</p>
               <span className="collection-shop-link">Explore collection <ArrowRight size={16} /></span>
             </div>
           </Link>

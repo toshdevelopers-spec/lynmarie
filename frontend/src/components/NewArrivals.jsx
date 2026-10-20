@@ -5,11 +5,21 @@ import Loader from './ui/Loader';
 import ErrorMessage from './ui/ErrorMessage';
 
 const NewArrivals = () => {
-  const { data: products = [], isLoading: loading, isError: error } = useGetProductsQuery({
-    per_page: 8,
+  const office = useGetProductsQuery({
+    category: 'office-wear',
+    per_page: 4,
     orderby: 'date',
     order: 'desc',
   });
+  const dinner = useGetProductsQuery({
+    category: 'evening-dinner-dresses',
+    per_page: 4,
+    orderby: 'date',
+    order: 'desc',
+  });
+  const products = [...(office.data || []), ...(dinner.data || [])];
+  const loading = office.isLoading || dinner.isLoading;
+  const error = office.isError || dinner.isError;
 
   if (loading) {
     return (
@@ -46,7 +56,7 @@ const NewArrivals = () => {
               New Arrivals
             </h2>
             <p className="text-gray-600 font-sans font-light tracking-wide">
-              Fresh styles just in
+              Polished workwear and dresses for dinner, celebrations and evenings out.
             </p>
           </div>
           <Link
@@ -98,6 +108,9 @@ const NewArrivals = () => {
                   <h3 className="font-serif font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#4c00b0] transition-colors tracking-wide">
                     {product.name}
                   </h3>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-[.12em] text-purple-800">
+                    {product.categories?.find(category => ['Office Wear', 'Evening & Dinner Dresses'].includes(category.name))?.name || 'The LynMarie Edit'}
+                  </p>
                   <div className="flex items-center gap-2">
                     {hasSale && (
                       <span className="text-gray-400 line-through text-sm font-sans">

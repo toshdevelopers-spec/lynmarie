@@ -8,6 +8,7 @@ import { Filter, Grid3X3, List } from 'lucide-react';
 import { setPageSeo } from '../utils/pageSeo';
 
 const Shop = () => {
+  const colorOptions = ['Beige', 'Black', 'Black and ivory', 'Black and pink', 'Black and white', 'Black, white and multicolour', 'Blue and black', 'Blue and multicolour', 'Blue and white', 'Blush pink', 'Blush pink and floral', 'Brown', 'Brown and black', 'Brown and cream', 'Burgundy', 'Champagne', 'Charcoal and blue', 'Charcoal and grey', 'Charcoal grey', 'Chocolate brown', 'Cobalt blue', 'Coral', 'Cream and multicolour', 'Cream and taupe', 'Emerald green', 'Fuchsia', 'Fuchsia pink', 'Gold', 'Green', 'Green and black', 'Grey', 'Hot pink', 'Ivory', 'Ivory and blue', 'Jade green', 'Lavender', 'Lilac', 'Mauve', 'Mint green', 'Mocha brown', 'Multicolour', 'Navy', 'Navy and black', 'Navy and multicolour', 'Navy and white', 'Navy blue', 'Olive and cream', 'Orange', 'Pale pink', 'Pink', 'Pink and black', 'Pink and gold', 'Pink and multicolour', 'Pink, yellow and blue', 'Powder blue', 'Purple', 'Purple and pink', 'Red', 'Red and black', 'Red and navy', 'Sage green', 'Slate grey', 'Taupe', 'Taupe and cream', 'Teal', 'Teal and cream', 'Teal and green', 'Teal and white', 'Teal blue', 'Turquoise', 'White', 'White and black', 'White and blue', 'White and orange', 'White and pastel', 'Wine red', 'Yellow and blue', 'Yellow and navy', 'Yellow and white'];
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug } = useParams();
   const categorySlug = searchParams.get('category') || slug;
@@ -17,6 +18,7 @@ const Shop = () => {
   const [sort, setSort] = useState(searchParams.get('sort') || 'date_desc');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [color, setColor] = useState(searchParams.get('color') || '');
 
   const params = { limit: 100, sort };
   if (categorySlug) params.category = categorySlug;
@@ -24,8 +26,9 @@ const Shop = () => {
   if (search) params.search = search;
   if (minPrice) params.minPrice = minPrice;
   if (maxPrice) params.maxPrice = maxPrice;
+  if (color) params.color = color;
 
-  const clearFilters = () => { setMinPrice(''); setMaxPrice(''); setSort('date_desc'); if (onSale) { const next = new URLSearchParams(searchParams); next.delete('on_sale'); setSearchParams(next); } };
+  const clearFilters = () => { setMinPrice(''); setMaxPrice(''); setColor(''); setSort('date_desc'); if (onSale || searchParams.has('color')) { const next = new URLSearchParams(searchParams); next.delete('on_sale'); next.delete('color'); setSearchParams(next); } };
 
   const { products, loading, error } = useProducts(params);
   const categoryName = categorySlug ? categorySlug.replace(/-/g, ' ') : '';
@@ -75,7 +78,8 @@ const Shop = () => {
         <div className="flex flex-wrap items-end gap-3 mb-7 rounded-xl border border-purple-100 bg-white/80 p-4">
           <label className="grid gap-1 text-xs text-gray-600">Minimum price <input aria-label="Minimum price" type="number" min="0" value={minPrice} onChange={e => setMinPrice(e.target.value)} className="w-32 rounded-md border border-purple-200 px-3 py-2" placeholder="KES 0" /></label>
           <label className="grid gap-1 text-xs text-gray-600">Maximum price <input aria-label="Maximum price" type="number" min="0" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} className="w-32 rounded-md border border-purple-200 px-3 py-2" placeholder="No limit" /></label>
-          {(minPrice || maxPrice || onSale) && <button type="button" onClick={clearFilters} className="rounded-md px-3 py-2 text-sm text-purple-800 underline">Clear filters</button>}
+          <label className="grid gap-1 text-xs text-gray-600">Color <select aria-label="Filter by color" value={color} onChange={e => setColor(e.target.value)} className="min-w-36 rounded-md border border-purple-200 bg-white px-3 py-2"><option value="">Any color</option>{colorOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+          {(minPrice || maxPrice || onSale || color) && <button type="button" onClick={clearFilters} className="rounded-md px-3 py-2 text-sm text-purple-800 underline">Clear filters</button>}
         </div>
 
         {error && <ErrorMessage message={error} />}

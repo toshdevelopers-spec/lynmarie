@@ -63,8 +63,16 @@ const Navbar = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [activeDropdown, isMobileMenuOpen]);
+  const featuredNav = [
+    { slug: 'dresses', label: 'Dresses' },
+    { slug: 'office-wear', label: 'Office' },
+    { slug: 'evening-dinner-dresses', label: 'Dinner Dresses' },
+    { slug: 'two-piece-sets', label: 'Sets' },
+    { slug: 'bags', label: 'Bags' },
+  ].map(item => ({ ...item, category: availableCategories.find(category => category.slug === item.slug) })).filter(item => item.category);
+  const featuredSlugs = new Set(featuredNav.map(item => item.slug));
   const navCategories = [
-    { name: 'Shop', items: availableCategories.map(category => ({ name: category.name, path: `/category/${category.slug}` })) },
+    { name: 'More', items: availableCategories.filter(category => !featuredSlugs.has(category.slug)).map(category => ({ name: category.name, path: `/category/${category.slug}` })) },
     { name: 'Sale', items: [{ name: 'All sale items', path: '/shop?on_sale=true' }] },
   ];
 
@@ -79,7 +87,7 @@ const Navbar = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-md text-gray-600 hover:bg-purple-100 transition-colors"
+            className="lg:hidden p-2 rounded-md text-gray-600 hover:bg-purple-100 transition-colors"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -94,7 +102,16 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation with Dropdowns */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center gap-3 xl:gap-4">
+            {featuredNav.map(item => (
+              <Link
+                key={item.slug}
+                to={`/category/${item.slug}`}
+                className="hidden lg:inline-flex items-center text-xs xl:text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide whitespace-nowrap"
+              >
+                {item.label}
+              </Link>
+            ))}
             {navCategories.map((category) => (
               <div
                 key={category.name}
@@ -105,7 +122,7 @@ const Navbar = () => {
                   type="button"
                   aria-expanded={activeDropdown === category.name}
                   onClick={() => setActiveDropdown(activeDropdown === category.name ? null : category.name)}
-                  className="flex items-center gap-1 text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide"
+                className="flex items-center gap-1 text-xs xl:text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide"
                 >
                   {category.name}
                   <ChevronDown className="w-4 h-4" />
@@ -198,9 +215,14 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-purple-200 animate-fade-in bg-purple-50/50">
+          <div className="lg:hidden py-4 border-t border-purple-200 animate-fade-in bg-purple-50/50">
             <div className="space-y-2">
               <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-[#4c00b0] px-4 py-3 text-center font-semibold text-white">Enquire with us</Link>
+              {featuredNav.map(item => (
+                <Link key={item.slug} to={`/category/${item.slug}`} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-white px-4 py-3 text-gray-900 hover:bg-purple-100 font-serif font-medium">
+                  {item.category.name}
+                </Link>
+              ))}
               {navCategories.map((category) => (
                 <div key={category.name} data-dropdown={category.name}>
                   <button

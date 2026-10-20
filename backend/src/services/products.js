@@ -20,6 +20,7 @@ export async function listProducts(q) {
   if (q.featured === "true" || q.featured === true) where.featured = true;
   if (q.on_sale === "true" || q.onSale === "true") where.salePrice = { not: null };
   if (q.category) where.categories = { some: { category: { OR: [{ id: Number(q.category) || -1 }, { slug: String(q.category) }] } } };
+  if (q.color?.trim()) where.attributes = { some: { attribute: { slug: { in: ["pa_color", "pa_colour"] } }, value: { contains: q.color.trim(), mode: "insensitive" } } };
   if (q.brand) where.brand = { OR: [{ id: Number(q.brand) || -1 }, { slug: String(q.brand) }] };
   if (q.stockStatus) where.stockStatus = q.stockStatus.toUpperCase().replaceAll("-", "_");
   if (q.minPrice || q.maxPrice) {

@@ -13,6 +13,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "data:import": "node scripts/migration/import-woocommerce.js",
     "data:migrate-images": "node scripts/migration/migrate-images-to-cloudinary.js",
+    "data:import-clothes": "python3 scripts/prepare-clothing-catalog.py && node scripts/import-clothing-catalog.js",
     "admin:bootstrap": "node scripts/bootstrap-owner.js"
   },
   "keywords": [],

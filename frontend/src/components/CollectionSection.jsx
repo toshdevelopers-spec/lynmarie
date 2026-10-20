@@ -1,55 +1,52 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useGetCategoriesQuery } from '../services/storefrontApi';
 import { categoryArtwork } from '../utils/categoryArtwork';
 
 export default function CollectionSection() {
   const { data: categories = [] } = useGetCategoriesQuery();
-  const track = useRef(null);
-  const collections = useMemo(
-    () => categories.filter(category => category._count?.products > 0),
-    [categories],
-  );
-
-  const scroll = direction => {
-    track.current?.scrollBy({ left: direction * 340, behavior: 'smooth' });
-  };
+  const featuredSlugs = ['dresses', 'office-wear', 'evening-dinner-dresses', 'two-piece-sets', 'bags', 'kidswear'];
+  const collections = useMemo(() => {
+    const available = new Map(categories.filter(category => category._count?.products > 0).map(category => [category.slug, category]));
+    return featuredSlugs.map(slug => available.get(slug)).filter(Boolean);
+  }, [categories]);
 
   return (
     <section className="collection-section py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="collection-heading mb-8">
+          <div className="collection-heading mb-8">
           <div>
-            <span className="section-kicker">CURATED FOR YOUR EVERYDAY MOVE</span>
+              <span className="section-kicker">THE LYNMARIE EDIT · NAIROBI</span>
             <h2 className="mt-2 text-3xl md:text-4xl font-serif font-bold text-purple-950 tracking-wide">
-              Collections
+              Shop by category
             </h2>
             <p className="mt-2 max-w-2xl text-gray-600 font-sans">
-              Find your next favourite in pieces selected for style, comfort and confidence.
+              Explore dresses, polished workwear, occasion looks and more, with styles selected for our shoppers in Kenya.
             </p>
           </div>
-          <div className="collection-controls" aria-label="Scroll collections">
-            <button type="button" onClick={() => scroll(-1)} aria-label="Previous collections"><ChevronLeft /></button>
-            <button type="button" onClick={() => scroll(1)} aria-label="Next collections"><ChevronRight /></button>
-          </div>
+          <Link to="/collections" className="collection-heading-link">View all categories <ArrowRight size={15} /></Link>
         </div>
 
         {collections.length ? (
-          <div className="collection-track" ref={track}>
-            {collections.map(category => (
-              <Link key={category.id} to={`/category/${category.slug}`} className="collection-card group">
+          <div className="collection-grid">
+            {collections.map((category, index) => {
+              const artwork = categoryArtwork(category);
+              return (
+              <Link key={category.id} to={`/category/${category.slug}`} className="collection-card group" style={{ '--collection-order': index }}>
                 <div className="collection-card-image">
-                  <img src={categoryArtwork(category)} alt={`${category.name} women’s clothing collection from LynMarie Boutique in Nairobi, Kenya`} loading="lazy" decoding="async" />
-                  <span className="collection-card-count">{category._count.products} {category._count.products === 1 ? 'piece' : 'pieces'}</span>
+                  <img src={artwork.src} style={{ objectPosition: artwork.position }} alt={artwork.alt} loading="lazy" decoding="async" />
+                  <span className="collection-card-count">{category._count.products} {category._count.products === 1 ? 'style' : 'styles'}</span>
                 </div>
                 <div className="collection-card-copy">
-                  <span className="collection-card-eyebrow">THE LYNMARIE EDIT</span>
+                  <span className="collection-card-eyebrow">SHOP THE EDIT</span>
                   <h3>{category.name}</h3>
-                  <span className="collection-shop-link">Explore collection <ArrowRight size={16} /></span>
+                  <p>{category.description}</p>
+                  <span className="collection-shop-link">Explore styles <ArrowRight size={16} /></span>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="py-8 text-center text-gray-600">Collections will appear here soon.</p>
