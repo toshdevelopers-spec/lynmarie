@@ -5,7 +5,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 const slides = [
   {
     id: 'statement',
-    image: '/images/hero1.png',
+    image: '/images/hero1.webp',
     alt: 'Model in a dramatic purple coat, placed on the right with open space for the story on the left',
     align: 'left',
     label: 'IMPORTED WOMEN’S FASHION · NAIROBI',
@@ -29,7 +29,7 @@ const slides = [
   },
   {
     id: 'everyday',
-    image: '/images/hero3.png',
+    image: '/images/hero3.webp',
     alt: 'Shopper carrying boutique bags on the right against a warm cream wall, with space on the left',
     align: 'left',
     label: 'YOUR EVERYDAY, ELEVATED',

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Banknote, Barcode, Check, CreditCard, Minus, Package, Plus, Printer, RefreshCw, Search, ShoppingCart, Store, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { adminService } from '../../services/admin';
+import Loader from '../../components/ui/Loader';
 
 const cash = value => `KES ${Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const productPrice = product => Number(product.salePrice ?? product.price ?? 0);
@@ -154,7 +155,7 @@ export default function SellerDashboard() {
         <section className="pos-inventory-panel">
           <div className="pos-section-title"><div><h2>Find clothing</h2><p>Scan a barcode or search by code, SKU, or item name.</p></div><span className="pos-inventory-count">{filteredProducts.length} results</span></div>
           <label className="pos-search"><Barcode size={23} /><input ref={searchRef} autoFocus value={search} onChange={event => setSearch(event.target.value)} onKeyDown={scanOrSearch} placeholder="Scan barcode or search clothes…" aria-label="Scan a barcode or search clothes" /><Search size={20} /></label>
-          <div className="pos-product-list">{loading ? <p className="pos-empty">Loading inventory…</p> : filteredProducts.length ? filteredProducts.map(product => {
+          <div className="pos-product-list">{loading ? <Loader size="small" label="Loading inventory" /> : filteredProducts.length ? filteredProducts.map(product => {
             const sizes = options(product, 'size');
             const colors = [...options(product, 'color'), ...options(product, 'colour')];
             const stock = available(product);

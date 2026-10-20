@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { useGetCategoriesQuery } from '../services/storefrontApi';
 import { categoryArtwork } from '../utils/categoryArtwork';
 import { usePageSeo } from '../hooks/usePageSeo';
+import Loader from '../components/ui/Loader';
 
 const collectionsSeo = { title: "Women's Clothing Collections in Kenya | LynMarie Boutique", description: "Browse LynMarie Boutique clothing collections in Nairobi, Kenya. Shop imported dresses, wedding wear, two-piece trouser suits, tops and sale styles at great prices.", path: '/collections' };
 
@@ -18,6 +19,7 @@ export default function Collections() {
         <h1 className="collections-page-title">Find your collection</h1>
         <p className="collections-page-intro">Explore imported women’s clothing in Nairobi and shop online across Kenya. Find occasion dresses, wedding guest looks, two-piece trouser suits, tops and current sale styles, with prices and available sizes shown on each piece.</p>
       </header>
+      {isLoading && <Loader size="large" label="Loading collections" />}
       <div className="collections-page-grid">
         {collections.map((category, index) => (
           <Link

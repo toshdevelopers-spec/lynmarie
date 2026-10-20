@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useGetCategoriesQuery } from '../services/storefrontApi';
 import { categoryArtwork } from '../utils/categoryArtwork';
+import Loader from './ui/Loader';
 
 export default function CollectionSection() {
-  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: categories = [], isLoading } = useGetCategoriesQuery();
   const featuredSlugs = ['dresses', 'office-wear', 'evening-dinner-dresses', 'two-piece-sets', 'bags', 'kidswear'];
   const collections = useMemo(() => {
     const available = new Map(categories.filter(category => category._count?.products > 0).map(category => [category.slug, category]));
@@ -28,7 +29,9 @@ export default function CollectionSection() {
           <Link to="/collections" className="collection-heading-link">View all categories <ArrowRight size={15} /></Link>
         </div>
 
-        {collections.length ? (
+        {isLoading ? (
+          <div className="min-h-48 grid place-items-center"><Loader size="medium" label="Loading categories" /></div>
+        ) : collections.length ? (
           <div className="collection-grid">
             {collections.map((category, index) => {
               const artwork = categoryArtwork(category);
