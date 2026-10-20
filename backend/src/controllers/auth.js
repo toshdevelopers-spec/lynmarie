@@ -5,10 +5,11 @@ import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 import { sendPasswordResetEmail } from "../utils/email.js";
+import { passwordSchema } from "../utils/security.js";
 
-const registerSchema = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8), firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional() });
+const registerSchema = z.object({ email: z.string().email().max(254).transform(v => v.toLowerCase()), password: passwordSchema, firstName: z.string().trim().min(1).max(100).optional(), lastName: z.string().trim().min(1).max(100).optional(), phone: z.string().max(40).optional() });
 const publicUser = ({ id, email, firstName, lastName, phone, role }) => ({ id, email, first_name: firstName, last_name: lastName, phone, role });
-const tokenFor = (user) => jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const tokenFor = (user) => jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d", algorithm: "HS256" });
 export const register = asyncHandler(async (req, res) => {
   const body = registerSchema.parse(req.body);
   const existing = await prisma.user.findUnique({ where: { email: body.email } });
@@ -49,7 +50,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   res.json(response);
 });
 export const resetPassword = asyncHandler(async (req, res) => {
-  const { token, password } = z.object({ token: z.string().min(16), password: z.string().min(8) }).parse(req.body);
+  const { token, password } = z.object({ token: z.string().min(16).max(256), password: passwordSchema }).parse(req.body);
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const record = await prisma.passwordResetToken.findUnique({ where: { tokenHash } });
   if (!record || record.usedAt || record.expiresAt < new Date()) return res.status(400).json({ success: false, message: "Reset token is invalid or expired" });

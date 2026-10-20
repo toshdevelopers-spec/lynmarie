@@ -39,8 +39,8 @@ const ChangePassword = () => {
 
     if (!formData.new_password) {
       newErrors.new_password = 'New password is required';
-    } else if (!isValidPassword(formData.new_password) || formData.new_password.length < 8) {
-      newErrors.new_password = 'Password must be at least 8 characters';
+    } else if (!isValidPassword(formData.new_password)) {
+      newErrors.new_password = 'Password must be 12 to 72 characters';
     }
 
     if (formData.new_password !== formData.confirm_password) {

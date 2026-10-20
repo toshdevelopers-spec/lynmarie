@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 import bcrypt from "bcryptjs";
+import { passwordSchema } from "../utils/security.js";
 export const updateMe = asyncHandler(async (req, res) => {
   const body = z.object({ first_name: z.string().trim().min(1).optional(), last_name: z.string().trim().min(1).optional(), phone: z.string().optional() }).parse(req.body);
   const user = await prisma.user.update({ where: { id: req.user.id }, data: { firstName: body.first_name, lastName: body.last_name, phone: body.phone } });
@@ -19,7 +20,7 @@ export const saveAddress = asyncHandler(async (req, res) => {
   res.json({ success: true, data: addressDto(row) });
 });
 export const changePassword = asyncHandler(async (req, res) => {
-  const input = z.object({ current_password: z.string().min(1), new_password: z.string().min(8).max(200) }).parse(req.body);
+  const input = z.object({ current_password: z.string().min(1).max(200), new_password: passwordSchema }).parse(req.body);
   if (!req.user.passwordHash || !(await bcrypt.compare(input.current_password, req.user.passwordHash))) return res.status(400).json({ success: false, message: "Current password is incorrect" });
   await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash: await bcrypt.hash(input.new_password, 12) } });
   res.json({ success: true, message: "Password changed successfully" });

@@ -4,8 +4,8 @@ import { useGetProductQuery, useGetProductsQuery } from '../services/storefrontA
 export const useProducts = (params = {}) => {
   const paramsKey = JSON.stringify(params);
   const stableParams = useMemo(() => JSON.parse(paramsKey), [paramsKey]);
-  const { data = [], isLoading, isError, refetch } = useGetProductsQuery(stableParams);
-  return { products: data, loading: isLoading, error: isError ? 'Failed to load products' : null, refetch };
+  const { currentData = [], isFetching, isError, refetch } = useGetProductsQuery(stableParams);
+  return { products: currentData, loading: isFetching, error: isError ? 'Failed to load products' : null, refetch };
 };
 
 export const useProduct = (id) => {

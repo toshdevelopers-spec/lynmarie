@@ -4,9 +4,9 @@ export const isValidEmail = (email) => {
   return emailRegex.test(email);
 };
 
-// Password validation (minimum 6 characters)
+// Password validation for new passwords (minimum 12 characters)
 export const isValidPassword = (password) => {
-  return password && password.length >= 6;
+  return password && password.length >= 12 && password.length <= 72;
 };
 
 // Phone number validation (Kenyan format)
@@ -33,7 +33,7 @@ export const validateField = (name, value) => {
     case 'email':
       return isValidEmail(value) ? '' : 'Please enter a valid email address';
     case 'password':
-      return isValidPassword(value) ? '' : 'Password must be at least 6 characters';
+      return isValidPassword(value) ? '' : 'Password must be 12 to 72 characters';
     case 'phone':
       return isValidPhone(value) ? '' : 'Please enter a valid Kenyan phone number';
     case 'postcode':

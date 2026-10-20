@@ -5,7 +5,7 @@ export async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
   if (!token) return res.status(401).json({ success: false, message: "Authentication required" });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user?.isActive) return res.status(401).json({ success: false, message: "Invalid or inactive account" });
     req.user = user;
@@ -19,7 +19,7 @@ export async function optionalAuth(req, res, next) {
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
   if (!token) return next();
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     req.user = await prisma.user.findFirst({ where: { id: payload.sub, isActive: true } }) || undefined;
   } catch { /* Invalid optional credentials do not block guest checkout. */ }
   next();

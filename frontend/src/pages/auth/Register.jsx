@@ -42,7 +42,7 @@ const Register = () => {
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (!isValidPassword(formData.password)) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = 'Password must be 12 to 72 characters';
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -143,6 +143,8 @@ const Register = () => {
               onChange={handleChange}
               error={errors.password}
               required
+              minLength={12}
+              maxLength={72}
               autoComplete="new-password"
             />
 

@@ -73,7 +73,7 @@ const ForgotPassword = () => {
         {resetToken ? (
           <form className="mt-8 space-y-6" onSubmit={handleReset}>
             {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
-            <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} autoComplete="new-password" />
+            <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={12} maxLength={72} autoComplete="new-password" />
             <Button type="submit" loading={loading} className="w-full">Set New Password</Button>
           </form>
         ) : success ? (

@@ -5,6 +5,7 @@ import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 import crypto from "node:crypto";
 import { sendPasswordResetEmail } from "../utils/email.js";
+import { passwordSchema } from "../utils/security.js";
 
 const productInclude = { images: { orderBy: { position: "asc" } }, categories: { include: { category: true } }, attributes: { include: { attribute: true }, orderBy: { attributeId: "asc" } }, brand: true };
 const slugify = value => value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -128,7 +129,7 @@ export const customers = asyncHandler(async (req, res) => {
   res.json({ success: true, data: rows });
 });
 export const createUser = asyncHandler(async (req, res) => {
-  const input = z.object({ email: z.string().email().transform(v => v.toLowerCase()), password: z.string().min(8), firstName: z.string().trim().min(1).optional(), lastName: z.string().trim().min(1).optional(), phone: z.string().optional(), role: z.enum(["CUSTOMER", "SELLER", "ADMIN"]).default("CUSTOMER") }).parse(req.body);
+  const input = z.object({ email: z.string().email().max(254).transform(v => v.toLowerCase()), password: passwordSchema, firstName: z.string().trim().min(1).max(100).optional(), lastName: z.string().trim().min(1).max(100).optional(), phone: z.string().max(40).optional(), role: z.enum(["CUSTOMER", "SELLER", "ADMIN"]).default("CUSTOMER") }).parse(req.body);
   if (input.role === "ADMIN" && req.user.email.toLowerCase() !== "adelewigitz@gmail.com") return res.status(403).json({ success: false, message: "Only the store owner can add administrators" });
   const { password, ...profile } = input;
   const row = await prisma.user.create({ data: { ...profile, passwordHash: await bcrypt.hash(password, 12) }, select: { id: true, email: true, firstName: true, lastName: true, phone: true, role: true, isActive: true } });

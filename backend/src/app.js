@@ -7,6 +7,9 @@ import { errorHandler, notFound } from "./middleware/errors.js";
 import { prisma } from "./config/prisma.js";
 
 const app = express();
+if (process.env.NODE_ENV === "production" && (process.env.JWT_SECRET || "").length < 32) {
+  throw new Error("JWT_SECRET must contain at least 32 characters in production.");
+}
 app.use(helmet());
 
 const frontendOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
@@ -22,15 +25,15 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "64kb" }));
 if (process.env.NODE_ENV !== "test") app.use(morgan("tiny"));
 
 app.get("/api/health", async (req, res) => {
   try {
     const [database] = await prisma.$queryRaw`SELECT to_regclass('public.products') IS NOT NULL AS schema_ready`;
     if (!database?.schema_ready) return res.status(503).json({ success: false, message: "Database is connected, but the store schema is not installed. Run backend migrations.", services: { api: "running", database: "connected", schema: "missing" } });
-    res.json({ success: true, message: "LynMarie Boutique API is running", environment: process.env.NODE_ENV || "development", services: { api: "running", database: "connected", schema: "ready" } });
+    res.json({ success: true, message: "LynMarie Boutique API is running", services: { api: "running", database: "connected", schema: "ready" } });
   } catch (error) {
     if (process.env.NODE_ENV !== "production") console.error("Health check could not reach PostgreSQL:", error.message);
     res.status(503).json({ success: false, message: "PostgreSQL is unavailable. Start the database service and check backend DATABASE_URL.", services: { api: "running", database: "unavailable" } });

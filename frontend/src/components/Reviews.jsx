@@ -12,10 +12,9 @@ const Reviews = () => {
     review: ''
   });
   const { data: reviews = [], isLoading: loading, refetch } = useGetReviewsQuery();
-  const [justSubmitted, setJustSubmitted] = useState([]);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,13 +22,11 @@ const Reviews = () => {
     setSubmitError('');
     try {
       const response = await api.post('/reviews', { reviewer: formData.reviewer, review: formData.review, rating: formData.rating });
-      const created = response.data.data;
-      setJustSubmitted(current => [created, ...current.filter(item => item.id !== created.id)]);
-      setSubmitSuccess(true);
+      setSubmitSuccess(response.data.message || 'Thank you. Your review was submitted for approval.');
       setFormData({ rating: 5, reviewer: '', review: '' });
       setShowForm(false);
       refetch();
-      setTimeout(() => setSubmitSuccess(false), 5000);
+      setTimeout(() => setSubmitSuccess(''), 5000);
     } catch (error) {
       setSubmitError(error.response?.data?.message || 'Could not submit your review');
     } finally {
@@ -124,13 +121,13 @@ const Reviews = () => {
 
         {submitSuccess && (
           <div role="status" className="max-w-2xl mx-auto mb-8 p-4 rounded-lg bg-green-100 text-green-800 text-center font-sans">
-            Thank you — your review is now visible below.
+            {submitSuccess}
           </div>
         )}
 
-        {[...justSubmitted, ...reviews.filter(review => !justSubmitted.some(item => item.id === review.id))].length > 0 ? (
+        {reviews.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[...justSubmitted, ...reviews.filter(review => !justSubmitted.some(item => item.id === review.id))].slice(0, 6).map((review) => (
+            {reviews.slice(0, 6).map((review) => (
               <div
                 key={review.id}
                 className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-purple-100"

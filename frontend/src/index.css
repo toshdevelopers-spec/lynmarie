@@ -344,6 +344,10 @@ h1, h2, h3, h4, .font-serif { font-family: 'Cormorant Garamond', Georgia, serif;
 .admin-form-grid select[multiple] { min-height: 88px; }
 .admin-form-grid small { color: #9d909b; font-size: 9px; font-weight: 400; }
 .admin-form-grid .span-two { grid-column: span 2; }
+.admin-category-select { display: grid; gap: 6px; color: #716370; font-size: 9px; font-weight: 600; }
+.admin-category-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 6px; max-height: 180px; overflow: auto; padding: 9px; border: 1px solid #e7dfe7; border-radius: 4px; background: #fff; }
+.admin-form-grid .admin-category-option { display: flex; align-items: center; gap: 7px; min-width: 0; color: #594957; font-size: 10px; font-weight: 500; }
+.admin-form-grid .admin-category-option input { width: auto; min-height: auto; padding: 0; accent-color: #785570; }
 .admin-form-grid .admin-check { display: flex; align-items: center; gap: 8px; }
 .admin-form-grid .admin-check input { width: auto; min-height: unset; accent-color: #785570; }
 .admin-photo-manager { display: grid; gap: 10px; }

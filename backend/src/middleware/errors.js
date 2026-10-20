@@ -1,7 +1,11 @@
 export const notFound = (req, res) => res.status(404).json({ success: false, message: "Route not found" });
 export const errorHandler = (err, req, res, next) => {
   if (res.headersSent) return next(err);
-  if (err.name === "ZodError") return res.status(400).json({ success: false, message: "Invalid request", errors: err.issues });
+  if (err.name === "ZodError") return res.status(400).json({
+    success: false,
+    message: "Invalid request",
+    errors: err.issues.map(({ path, message, code }) => ({ path, message, code })),
+  });
   if (err.code === "P2002") return res.status(409).json({ success: false, message: "A record with that email, SKU, slug, or identifier already exists" });
   if (err.code === "P2025") return res.status(404).json({ success: false, message: "Requested record was not found" });
   if (["P1001", "P1002", "ECONNREFUSED", "ETIMEDOUT"].includes(err.code) || ["ECONNREFUSED", "ETIMEDOUT"].includes(err.cause?.code)) {
@@ -13,7 +17,7 @@ export const errorHandler = (err, req, res, next) => {
     return res.status(503).json({ success: false, message: "The store database schema is missing or out of date. Run the backend migrations." });
   }
   const status = Number(err.status) || 500;
-  if (status >= 500) console.error(err);
+  if (status >= 500) console.error("Unhandled API error:", err.message);
   res.status(status).json({ success: false, message: status >= 500 ? "Internal server error" : err.message });
 };
 export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

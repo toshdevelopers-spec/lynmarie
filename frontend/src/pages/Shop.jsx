@@ -86,7 +86,7 @@ const Shop = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader size="large" />
+            <Loader size="large" label={categorySlug ? 'Loading this collection' : 'Loading styles'} />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-20">
