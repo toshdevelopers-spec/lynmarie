@@ -26,7 +26,7 @@ export default function Login() {
     navigate('/my-account');
   };
 
-  return <AuthShell image="/hero/occasion.webp" imageAlt="Model in an elegant occasion dress" eyebrow="WELCOME BACK" title="Sign in to your account">
+  return <AuthShell image="/hero/nairobi-fashion.jpg" imageAlt="African model wearing contemporary fashion in Nairobi" eyebrow="WELCOME BACK" title="Sign in to your account">
     <p className="auth-intro">Your favourite looks are waiting for you.</p>
     <form className="auth-form" onSubmit={handleSubmit}>
       {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}

@@ -819,6 +819,88 @@ body,
   color: #fff;
 }
 
+.footer-category-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; row-gap: 7px; }
+.footer-category-links a { display: inline-block; font-size: 14px; line-height: 1.35; }
+
+/* Admin dashboard readability: keep supporting text comfortably legible. */
+.admin-shell { font-size: 14px; line-height: 1.5; }
+.admin-shell .admin-brand small { font-size: 11px; }
+.admin-shell .admin-nav-label { font-size: 11px; }
+.admin-shell .admin-nav button { font-size: 13px; }
+.admin-shell .admin-nav button i { font-size: 11px; }
+.admin-shell .admin-person b { font-size: 13px; }
+.admin-shell .admin-person small { font-size: 12px; }
+.admin-shell .admin-sidebar-bottom > button { font-size: 13px; }
+.admin-shell .admin-topbar > div:first-of-type > span { font-size: 12px; }
+.admin-shell .admin-topbar > div:first-of-type > span { color: #6e5c6b; }
+.admin-shell .admin-notification-count { font-size: 11px; }
+.admin-shell .admin-notification-heading { font-size: 14px; }
+.admin-shell .admin-notification-heading span,
+.admin-shell .admin-notification-panel article small { font-size: 12px; }
+.admin-shell .admin-notification-panel article p,
+.admin-shell .admin-notification-empty { font-size: 13px; }
+.admin-shell .admin-live { font-size: 12px; }
+.admin-shell .admin-welcome > div:first-child > span { font-size: 11px; }
+.admin-shell .admin-welcome p { font-size: 13px; }
+.admin-shell .admin-stat small { color: #625562; font-size: 13px; }
+.admin-shell .admin-panel-heading p,
+.admin-shell .admin-panel-heading button,
+.admin-shell .admin-mini-row small { font-size: 12px; }
+.admin-shell .admin-panel-heading p,
+.admin-shell .admin-mini-row small { color: #6f626f; }
+.admin-shell .admin-mini-row b,
+.admin-shell .admin-mini-row strong { font-size: 13px; }
+.admin-shell .admin-toolbar p { color: #665966; font-size: 13px; }
+.admin-shell .admin-primary,
+.admin-shell .admin-secondary { font-size: 13px; }
+.admin-shell .admin-search input { font-size: 14px; }
+.admin-shell .admin-table-wrap th { color: #675967; font-size: 12px; }
+.admin-shell .admin-table-wrap td,
+.admin-shell .admin-table-wrap td b { font-size: 13px; }
+.admin-shell .admin-table-wrap td small,
+.admin-shell .admin-table-wrap td del { color: #716570; font-size: 12px; }
+.admin-shell .admin-badge { font-size: 11px; }
+.admin-shell .admin-table-wrap select,
+.admin-shell .admin-inquiry-list select { font-size: 13px; }
+.admin-shell .new-arrivals-count,
+.admin-shell .new-arrivals-rank,
+.admin-shell .new-arrivals-product-copy b { font-size: 13px; }
+.admin-shell .new-arrivals-product-copy small,
+.admin-shell .new-arrivals-catalog-heading p { font-size: 12px; }
+.admin-shell .admin-editor-heading p,
+.admin-shell .admin-form-grid label,
+.admin-shell .admin-inline-form input,
+.admin-shell .admin-user-form input,
+.admin-shell .admin-user-form select,
+.admin-shell .admin-category-select { font-size: 13px; }
+.admin-shell .admin-form-grid input,
+.admin-shell .admin-form-grid select,
+.admin-shell .admin-form-grid textarea,
+.admin-shell .admin-inline-form input,
+.admin-shell .admin-user-form input,
+.admin-shell .admin-user-form select { font-size: 14px; }
+.admin-shell .admin-form-grid small,
+.admin-shell .admin-form-grid .admin-category-option,
+.admin-shell .admin-category-grid small,
+.admin-shell .admin-review-grid article > small,
+.admin-shell .admin-inquiry-list small,
+.admin-shell .admin-photo-item > span { font-size: 12px; }
+.admin-shell .admin-category-grid b,
+.admin-shell .admin-review-top b,
+.admin-shell .admin-inquiry-list b,
+.admin-shell .admin-inquiry-list a { font-size: 14px; }
+.admin-shell .admin-review-grid .admin-primary,
+.admin-shell .admin-review-grid .admin-secondary { font-size: 12px; }
+.admin-shell .admin-inquiry-list p { font-size: 14px; }
+.admin-shell .admin-notice,
+.admin-shell .admin-error,
+.admin-shell .admin-empty { font-size: 13px; }
+.admin-shell .admin-empty { color: #665a65; }
+@media (max-width: 720px) {
+  .admin-shell .admin-topbar > div:first-of-type > span { font-size: 12px; }
+  .admin-shell .admin-toolbar > .admin-primary { font-size: 12px; }
+}
+
 .fashion-hero {
   min-height: min(820px, 100svh);
 }

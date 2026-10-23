@@ -5,6 +5,8 @@ import { useGetCategoriesQuery } from '../../services/storefrontApi';
 const Footer = () => {
   const { data: categories = [] } = useGetCategoriesQuery();
   const availableCategories = categories.filter(category => category._count?.products > 0);
+  const primaryCategorySlugs = new Set(['dresses', 'office-wear', 'jumpsuits', 'two-piece-sets']);
+  const quickLinkCategories = availableCategories.filter(category => !primaryCategorySlugs.has(category.slug));
 
   return (
     <footer className="storefront-footer text-white">
@@ -22,14 +24,16 @@ const Footer = () => {
           {/* Quick Links */}
           <div>
             <h3 className="text-lg font-serif font-bold mb-4 tracking-wide">Quick Links</h3>
-            <ul className="space-y-2">
+            <ul className="footer-category-links">
               <li>
                 <Link to="/shop" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">
                   Shop All
                 </Link>
               </li>
               <li><Link to="/collections" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">All collections</Link></li>
-              {availableCategories.map(category => (
+              <li><Link to="/shop?sort=date_desc" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">New arrivals</Link></li>
+              <li><Link to="/shop?on_sale=true" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">Sale</Link></li>
+              {quickLinkCategories.map(category => (
                 <li key={category.id}>
                   <Link to={`/category/${category.slug}`} className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">
                     {category.name}

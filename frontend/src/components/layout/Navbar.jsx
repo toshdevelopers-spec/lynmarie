@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ShoppingCart, User, Search, ChevronDown, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ShoppingCart, User, Search, LayoutDashboard } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { useGetCategoriesQuery } from '../../services/storefrontApi';
@@ -8,7 +8,6 @@ import { useGetCategoriesQuery } from '../../services/storefrontApi';
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const { data: availableCategories = [] } = useGetCategoriesQuery();
@@ -42,17 +41,15 @@ const Navbar = () => {
   };
 
   useEffect(() => {
-    if (!activeDropdown && !isMobileMenuOpen) return undefined;
+    if (!isMobileMenuOpen) return undefined;
 
     const handlePointerDown = event => {
-      const dropdown = event.target.closest?.('[data-dropdown]');
-      if (!dropdown || dropdown.dataset.dropdown !== activeDropdown) setActiveDropdown(null);
       if (!navRef.current?.contains(event.target)) setIsMobileMenuOpen(false);
     };
     const handleKeyDown = event => {
       if (event.key === 'Escape') {
-        setActiveDropdown(null);
         setIsMobileMenuOpen(false);
+        setIsSearchOpen(false);
       }
     };
 
@@ -62,25 +59,18 @@ const Navbar = () => {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeDropdown, isMobileMenuOpen]);
+  }, [isMobileMenuOpen]);
   const featuredNav = [
     { slug: 'dresses', label: 'Dresses' },
-    { slug: 'office-wear', label: 'Office' },
-    { slug: 'evening-dinner-dresses', label: 'Dinner Dresses' },
-    { slug: 'two-piece-sets', label: 'Sets' },
-    { slug: 'kidswear', label: 'Kidswear' },
-    { slug: 'bags', label: 'Bags' },
+    { slug: 'office-wear', label: 'Office Wear' },
+    { slug: 'jumpsuits', label: 'Jumpsuits' },
+    { slug: 'two-piece-sets', label: 'Two-piece Sets' },
   ].map(item => ({ ...item, category: availableCategories.find(category => category.slug === item.slug) })).filter(item => item.category);
-  const featuredSlugs = new Set(featuredNav.map(item => item.slug));
-  const navCategories = [
-    { name: 'More', items: availableCategories.filter(category => !featuredSlugs.has(category.slug)).map(category => ({ name: category.name, path: `/category/${category.slug}` })) },
-    { name: 'Sale', items: [{ name: 'All sale items', path: '/shop?on_sale=true' }] },
-  ];
 
   return (
     <nav
       ref={navRef}
-      className={`storefront-nav sticky top-0 z-50 shadow-sm backdrop-blur-md ${isHomeTop ? 'storefront-nav--hero-top' : ''} ${isHome && isScrolled ? 'storefront-nav--fixed' : ''} ${isHomeTop && (isMobileMenuOpen || isSearchOpen || activeDropdown) ? 'storefront-nav--panel-open' : ''}`}
+      className={`storefront-nav sticky top-0 z-50 shadow-sm backdrop-blur-md ${isHomeTop ? 'storefront-nav--hero-top' : ''} ${isHome && isScrolled ? 'storefront-nav--fixed' : ''} ${isHomeTop && (isMobileMenuOpen || isSearchOpen) ? 'storefront-nav--panel-open' : ''}`}
     >
       {/* Main Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -102,7 +92,7 @@ const Navbar = () => {
             />
           </Link>
 
-          {/* Desktop Navigation with Dropdowns */}
+          {/* Desktop navigation */}
           <div className="hidden lg:flex items-center gap-3 xl:gap-4">
             {featuredNav.map(item => (
               <Link
@@ -113,48 +103,8 @@ const Navbar = () => {
                 {item.label}
               </Link>
             ))}
-            {navCategories.map((category) => (
-              <div
-                key={category.name}
-                className="relative group"
-                data-dropdown={category.name}
-              >
-                <button
-                  type="button"
-                  aria-expanded={activeDropdown === category.name}
-                  onClick={() => setActiveDropdown(activeDropdown === category.name ? null : category.name)}
-                className="flex items-center gap-1 text-xs xl:text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide"
-                >
-                  {category.name}
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {/* Dropdown Menu */}
-                {activeDropdown === category.name && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border-2 border-purple-200 overflow-hidden z-50">
-                    <div className="py-2">
-                      {category.items.map((item) => (
-                        <Link
-                          key={item.name}
-                          to={item.path}
-                          onClick={() => setActiveDropdown(null)}
-                          className="block px-4 py-3 text-gray-700 hover:bg-purple-100 hover:text-[#4c00b0] transition-colors font-serif tracking-wide"
-                        >
-                          {item.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <Link
-              to="/shop?sort=date_desc"
-              className="text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide"
-            >
-              New In
-            </Link>
+            <Link to="/collections" className="text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide">More</Link>
+            <Link to="/shop?on_sale=true" className="text-sm text-gray-700 hover:text-[#4c00b0] transition-colors font-serif font-medium py-2 tracking-wide">Sale</Link>
             <Link to="/contact" className="rounded-full bg-[#4c00b0] px-4 py-2 text-xs font-semibold tracking-wide text-white shadow-sm transition hover:bg-[#3d008f]">Enquire</Link>
           </div>
 
@@ -218,45 +168,21 @@ const Navbar = () => {
         {isMobileMenuOpen && (
           <div className="lg:hidden py-4 border-t border-purple-200 animate-fade-in bg-purple-50/50">
             <div className="space-y-2">
-              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-[#4c00b0] px-4 py-3 text-center font-semibold text-white">Enquire with us</Link>
               {featuredNav.map(item => (
                 <Link key={item.slug} to={`/category/${item.slug}`} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-white px-4 py-3 text-gray-900 hover:bg-purple-100 font-serif font-medium">
                   {item.category.name}
                 </Link>
               ))}
-              {navCategories.map((category) => (
-                <div key={category.name} data-dropdown={category.name}>
-                  <button
-                    type="button"
-                    aria-expanded={activeDropdown === category.name}
-                    onClick={() => setActiveDropdown(activeDropdown === category.name ? null : category.name)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-gray-900 bg-white hover:bg-purple-100 hover:text-[#3d008f] active:bg-purple-200 active:text-[#3d008f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg font-serif font-medium transition-colors tracking-wide"
-                  >
-                    {category.name}
-                    <ChevronDown className={`w-4 h-4 transition-transform ${activeDropdown === category.name ? 'rotate-180' : ''}`} />
-                  </button>
-                  {activeDropdown === category.name && (
-                    <div className="pl-8 space-y-1">
-                      {category.items.map((item) => (
-                        <Link
-                          key={item.name}
-                          to={item.path}
-                          onClick={() => { setIsMobileMenuOpen(false); setActiveDropdown(null); }}
-                          className="block px-4 py-3 text-gray-900 bg-white hover:text-[#3d008f] hover:bg-purple-100 active:text-[#3d008f] active:bg-purple-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg transition-colors font-serif tracking-wide"
-                        >
-                          {item.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
               <Link
-                to="/shop?sort=date_desc"
+                to="/collections"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="block px-4 py-3 text-gray-900 bg-white hover:bg-purple-100 hover:text-[#3d008f] active:bg-purple-200 active:text-[#3d008f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#4c00b0] rounded-lg font-serif font-medium transition-colors tracking-wide"
               >
-                New In
+                More collections
+              </Link>
+              <Link to="/shop?on_sale=true" onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-white px-4 py-3 font-serif font-medium text-gray-900 hover:bg-purple-100">Sale</Link>
+              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-white px-4 py-3 font-serif font-medium text-gray-900 hover:bg-purple-100">
+                Enquire
               </Link>
             </div>
           </div>
