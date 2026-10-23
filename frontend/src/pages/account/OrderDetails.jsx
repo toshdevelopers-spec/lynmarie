@@ -11,6 +11,8 @@ export default function OrderDetails() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [canceling, setCanceling] = useState(false);
+  const [cancelNotice, setCancelNotice] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -22,8 +24,21 @@ export default function OrderDetails() {
   if (error || !order) return <section className="rounded-xl border border-gray-200 p-6"><p className="text-red-700">{error || 'Order not found.'}</p><Link className="mt-4 inline-block text-purple-800 underline" to="/my-account/orders">Back to my orders</Link></section>;
 
   const isPickup = order.fulfillmentMethod === 'PICKUP';
+  const canCancel = !['COMPLETED', 'CANCELLED', 'REFUNDED'].includes(order.status);
+  const cancelOrder = async () => {
+    if (!window.confirm('Cancel this order? The store will be notified, and the order will show as cancelled.')) return;
+    setCanceling(true); setError(''); setCancelNotice('');
+    try {
+      const result = await checkoutService.cancelOrder(order.id);
+      setOrder(result.data);
+      setCancelNotice(result.message || 'Order cancelled.');
+    } catch (err) { setError(err.response?.data?.message || 'Could not cancel this order.'); }
+    finally { setCanceling(false); }
+  };
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><Link className="text-sm font-medium text-purple-800" to="/my-account/orders">← My orders</Link><h2 className="mt-2 text-2xl font-bold text-gray-900">Order {order.orderNumber || `#${order.id}`}</h2><p className="mt-1 text-sm text-gray-600">Placed {new Date(order.createdAt).toLocaleString()}</p></div><span className="rounded-full bg-purple-100 px-4 py-2 text-sm font-semibold text-purple-900">{title(order.status)}</span></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><Link className="text-sm font-medium text-purple-800" to="/my-account/orders">← My orders</Link><h2 className="mt-2 text-2xl font-bold text-gray-900">Order {order.orderNumber || `#${order.id}`}</h2><p className="mt-1 text-sm text-gray-600">Placed {new Date(order.createdAt).toLocaleString()}</p></div><div className="flex items-center gap-3"><span className={`rounded-full px-4 py-2 text-sm font-semibold ${order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-purple-100 text-purple-900'}`}>{title(order.status)}</span>{canCancel && <button type="button" onClick={cancelOrder} disabled={canceling} className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60">{canceling ? 'Cancelling…' : 'Cancel order'}</button>}</div></div>
+    {cancelNotice && <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">{cancelNotice}</p>}
+    {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     <section className="grid gap-4 sm:grid-cols-2">
       <article className="rounded-xl border border-gray-200 p-5"><h3 className="font-semibold text-gray-900">Payment</h3><p className="mt-3"><b>Method:</b> {paymentName(order.paymentMethod)}</p><p className="mt-1"><b>Payment status:</b> {title(order.paymentStatus)}</p>{order.paymentReference && <p className="mt-1"><b>Receipt code:</b> {order.paymentReference}</p>}<p className="mt-1"><b>Paid:</b> {formatPrice(order.amountPaid || 0)} <span className="text-gray-500">of {formatPrice(order.total)}</span></p>{order.paymentStatus === 'AWAITING_REVIEW' && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">We’re checking your M-Pesa payment and will update you when it is confirmed.</p>}{order.paymentStatus === 'REJECTED' && order.paymentReviewNote && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Payment update: {order.paymentReviewNote}</p>}</article>
       <article className="rounded-xl border border-gray-200 p-5"><h3 className="font-semibold text-gray-900">{isPickup ? 'Collection' : 'Delivery'}</h3>{isPickup ? <><p className="mt-3">Collect your order from the Lyn Marie Boutique shop.</p><p className="mt-1">Collection status: {order.pickedUpAt ? 'Collected' : 'Awaiting collection'}</p></> : <><p className="mt-3">Delivering to:</p><p className="mt-1 font-medium">{order.shippingAddress || 'Address not available'}</p>{order.shippingPhone && <p className="mt-1">Phone: {order.shippingPhone}</p>}</>}</article>

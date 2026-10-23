@@ -91,13 +91,17 @@ export default function AdminDashboard() {
         const counts = snapshot.counts || {};
         if (previous && counts.inquiries > previous.inquiries) addNotification('A new customer enquiry has arrived.');
         if (previous && counts.orders > previous.orders) addNotification('A new customer order has arrived.');
-        previous = { inquiries: counts.inquiries || 0, orders: counts.orders || 0 };
+        if (previous && counts.cancelledOrders > previous.cancelledOrders) {
+          addNotification('A customer cancelled an order.');
+          if (['orders', 'payments'].includes(section)) refresh();
+        }
+        previous = { inquiries: counts.inquiries || 0, orders: counts.orders || 0, cancelledOrders: counts.cancelledOrders || 0 };
       } catch { /* The active section shows connection errors when data is opened. */ }
     };
     checkForUpdates();
     const timer = window.setInterval(checkForUpdates, 30000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [addNotification]);
+  }, [addNotification, refresh, section]);
   const setSectionAndClose = key => { activeSection.current = key; sectionRequest.current += 1; setSection(key); setLoading(true); setError(''); setMobileNav(false); setEditing(null); setSearch(''); };
   const closeProductEditor = () => {
     productForm.images.forEach(image => { if (image.preview) URL.revokeObjectURL(image.preview); });

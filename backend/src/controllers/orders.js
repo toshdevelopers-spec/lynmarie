@@ -29,3 +29,25 @@ export const create = asyncHandler(async (req, res) => {
 });
 export const listMine = asyncHandler(async (req, res) => { res.json({ success: true, data: await prisma.order.findMany({ where: { userId: req.user.id }, include: { items: true }, orderBy: { createdAt: "desc" } }) }); });
 export const showMine = asyncHandler(async (req, res) => { const id = Number(req.params.id); const row = await prisma.order.findFirst({ where: { id, userId: req.user.id }, include: { items: true } }); if (!row) return res.status(404).json({ success: false, message: "Order not found" }); res.json({ success: true, data: row }); });
+export const cancelMine = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const row = await prisma.$transaction(async tx => {
+    const order = await tx.order.findFirst({ where: { id, userId: req.user.id }, include: { items: true } });
+    if (!order) return null;
+    if (["COMPLETED", "CANCELLED", "REFUNDED"].includes(order.status)) throw Object.assign(new Error("This order can no longer be cancelled"), { status: 409 });
+    for (const item of order.items) {
+      if (!item.productId) continue;
+      const product = await tx.product.findUnique({ where: { id: item.productId }, select: { id: true, manageStock: true, stockQuantity: true } });
+      if (!product?.manageStock || product.stockQuantity == null) continue;
+      await tx.product.update({ where: { id: product.id }, data: { stockQuantity: { increment: item.quantity }, stockStatus: "IN_STOCK" } });
+    }
+    const changed = await tx.order.updateMany({ where: { id, userId: req.user.id, status: { notIn: ["COMPLETED", "CANCELLED", "REFUNDED"] } }, data: { status: "CANCELLED" } });
+    if (!changed.count) throw Object.assign(new Error("This order has already been completed or cancelled"), { status: 409 });
+    return tx.order.findUnique({ where: { id }, include: { items: true } });
+  });
+  if (!row) return res.status(404).json({ success: false, message: "Order not found" });
+  let emailSent = true;
+  try { await sendOrderUpdateEmail(row, { kind: "cancellation", message: `Your order ${row.orderNumber || `#${row.id}`} has been cancelled as requested. If you already paid, please contact us about the payment return.` }); }
+  catch (error) { emailSent = false; console.error("Order cancellation email could not be sent:", error.message); }
+  res.json({ success: true, data: row, emailSent, message: emailSent ? "Order cancelled. A confirmation email has been sent." : "Order cancelled, but the email could not be sent. Please contact the store." });
+});

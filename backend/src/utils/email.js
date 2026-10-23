@@ -60,7 +60,7 @@ export async function sendInquiryNotice(inquiry, recipients = []) {
 
 export async function sendOrderUpdateEmail(order, change) {
   if (!order.billingEmail) return;
-  const label = change.kind === "payment" ? "Payment update" : "Delivery update";
+  const label = change.kind === "payment" ? "Payment update" : change.kind === "cancellation" ? "Order cancellation" : "Delivery update";
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#241532"><h1 style="color:#56347b">${label} for order ${escapeHtml(order.orderNumber || `#${order.id}`)}</h1><p>Hi ${escapeHtml(order.billingFirstName || "there")},</p><p>${escapeHtml(change.message)}</p><p>Questions? Email <a href="mailto:info@lynmarieboutique.com">info@lynmarieboutique.com</a>.</p></div>`;
   await deliver({ to: order.billingEmail, subject: `${label} · ${order.orderNumber || `#${order.id}`} | Lyn Marie Boutique`, html, text: `${label} for order ${order.orderNumber || `#${order.id}`}: ${change.message}` });
 }

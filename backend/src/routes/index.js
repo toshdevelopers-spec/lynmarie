@@ -57,6 +57,7 @@ router.get("/customers/me/orders", protect, customers.orders);
 router.post("/orders", optionalAuth, orders.create);
 router.get("/orders", protect, orders.listMine);
 router.get("/orders/:id", protect, orders.showMine);
+router.post("/orders/:id/cancel", protect, orders.cancelMine);
 router.post("/reviews", asyncHandler(async (req, res) => {
   const { productId, reviewer, review, rating } = z.object({ productId: z.coerce.number().int().positive().optional(), reviewer: z.string().trim().min(1).max(150), reviewer_email: z.string().email().optional(), review: z.string().trim().min(1).max(5000), rating: z.coerce.number().int().min(1).max(5) }).parse(req.body);
   if (productId && !await prisma.product.findUnique({ where: { id: productId }, select: { id: true } })) return res.status(404).json({ success: false, message: "Product not found" });
