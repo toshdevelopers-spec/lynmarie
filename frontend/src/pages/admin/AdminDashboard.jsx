@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store, Sparkles, ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, CreditCard, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { adminService } from '../../services/admin';
@@ -7,11 +7,12 @@ import Loader from '../../components/ui/Loader';
 
 const navItems = [
   ['overview', 'Overview', LayoutDashboard], ['products', 'Products & stock', Shirt], ['new-arrivals', 'New Arrivals', Sparkles], ['categories', 'Categories', Tags], ['cart', 'Cart activity', ShoppingBag],
-  ['customers', 'Customers & staff', Users], ['orders', 'Orders', ShoppingBag], ['reviews', 'Reviews', Star], ['inquiries', 'Enquiries', MessageSquareText],
+  ['customers', 'Customers & staff', Users], ['orders', 'Orders', ShoppingBag], ['payments', 'Payments', CreditCard], ['reviews', 'Reviews', Star], ['inquiries', 'Enquiries', MessageSquareText],
 ];
 const emptyProduct = { name: '', description: '', shortDescription: '', sku: '', barcode: '', price: '', regularPrice: '', salePrice: '', stockQuantity: '1', categoryIds: [], images: [], attributes: [], metaTitle: '', metaDescription: '', featured: false, manageStock: true, status: 'PUBLISHED' };
 const money = value => `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 const stamp = value => value ? new Date(value).toLocaleDateString() : '—';
+const canReviewPayment = order => ['AWAITING_REVIEW', 'PENDING', 'REJECTED'].includes(order.paymentStatus) && (order.paymentMethod === 'mpesa' || (order.paymentMethod === 'cod' && order.deliveryPaymentConfirmedAt));
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -34,6 +35,9 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [pendingPaymentCount, setPendingPaymentCount] = useState(0);
+  const sectionRequest = useRef(0);
+  const activeSection = useRef('overview');
 
   const addNotification = useCallback(message => {
     setNotifications(items => [{ id: `${Date.now()}-${Math.random()}`, message, time: new Date() }, ...items].slice(0, 8));
@@ -41,21 +45,39 @@ export default function AdminDashboard() {
   }, []);
 
   const refresh = useCallback(async () => {
+    const requestId = ++sectionRequest.current;
+    const requestedSection = activeSection.current;
     setLoading(true); setError('');
     try {
-      if (section === 'overview') setData(await adminService.dashboard());
-      else if (section === 'products') { const [rows, categoryRows] = await Promise.all([adminService.products(), adminService.categories()]); setData({ rows }); setCategories(categoryRows); }
-      else if (section === 'new-arrivals') { const [rows, selection] = await Promise.all([adminService.products(), adminService.newArrivals()]); setData({ rows }); setNewArrivalIds(selection.selectedIds || []); }
-      else if (section === 'cart') setData({ rows: await adminService.cartActivity() });
-      else if (section === 'categories') setCategories(await adminService.categories());
-      else if (section === 'customers') setData({ rows: await adminService.customers() });
-      else if (section === 'orders') { const [rows, people] = await Promise.all([adminService.orders(), adminService.customers()]); setData({ rows }); setStaff(people.filter(person => person.role === 'SELLER' && person.isActive)); }
-      else if (section === 'reviews') setData({ rows: await adminService.reviews() });
-      else if (section === 'inquiries') setData({ rows: await adminService.inquiries() });
-    } catch (err) { setError(err.response?.data?.message || 'Unable to load this section.'); }
-    finally { setLoading(false); }
-  }, [section]);
-  useEffect(() => { const timer = window.setTimeout(() => refresh(), 0); return () => window.clearTimeout(timer); }, [refresh]);
+      let nextData;
+      let nextCategories;
+      let nextArrivals;
+      let nextStaff;
+      let nextPaymentCount;
+      if (requestedSection === 'overview') { nextData = await adminService.dashboard(); nextPaymentCount = nextData.counts?.paymentApprovals || 0; }
+      else if (requestedSection === 'products') { const [rows, categoryRows] = await Promise.all([adminService.products(), adminService.categories()]); nextData = { rows }; nextCategories = categoryRows; }
+      else if (requestedSection === 'new-arrivals') { const [rows, selection] = await Promise.all([adminService.products(), adminService.newArrivals()]); nextData = { rows }; nextArrivals = selection.selectedIds || []; }
+      else if (requestedSection === 'cart') nextData = { rows: await adminService.cartActivity() };
+      else if (requestedSection === 'categories') nextCategories = await adminService.categories();
+      else if (requestedSection === 'customers') nextData = { rows: await adminService.customers() };
+      else if (requestedSection === 'orders' || requestedSection === 'payments') {
+        const [rows, people] = await Promise.all([adminService.orders(), requestedSection === 'orders' ? adminService.customers() : Promise.resolve([])]);
+        nextPaymentCount = rows.filter(canReviewPayment).length;
+        nextData = { rows: requestedSection === 'payments' ? rows.filter(canReviewPayment) : rows };
+        if (requestedSection === 'orders') nextStaff = people.filter(person => person.role === 'SELLER' && person.isActive);
+      }
+      else if (requestedSection === 'reviews') nextData = { rows: await adminService.reviews() };
+      else if (requestedSection === 'inquiries') nextData = { rows: await adminService.inquiries() };
+      if (requestId !== sectionRequest.current) return;
+      if (nextData) setData(nextData);
+      if (nextCategories) setCategories(nextCategories);
+      if (nextArrivals) setNewArrivalIds(nextArrivals);
+      if (nextStaff) setStaff(nextStaff);
+      if (nextPaymentCount !== undefined) setPendingPaymentCount(nextPaymentCount);
+    } catch (err) { if (requestId === sectionRequest.current) setError(err.response?.data?.message || 'Unable to load this section.'); }
+    finally { if (requestId === sectionRequest.current) setLoading(false); }
+  }, []);
+  useEffect(() => { const timer = window.setTimeout(() => refresh(), 0); return () => window.clearTimeout(timer); }, [refresh, section]);
   const run = async action => { setBusy(true); setNotice(''); setError(''); try { const result = await action(); setNotice(result?.message || 'Changes saved.'); addNotification('Your dashboard changes were saved.'); await refresh(); } catch (err) { setError(err.response?.data?.message || err.message || 'Unable to save changes.'); } finally { setBusy(false); } };
 
   useEffect(() => {
@@ -75,7 +97,7 @@ export default function AdminDashboard() {
     const timer = window.setInterval(checkForUpdates, 30000);
     return () => { active = false; window.clearInterval(timer); };
   }, [addNotification]);
-  const setSectionAndClose = key => { setSection(key); setMobileNav(false); setEditing(null); setSearch(''); };
+  const setSectionAndClose = key => { activeSection.current = key; sectionRequest.current += 1; setSection(key); setLoading(true); setError(''); setMobileNav(false); setEditing(null); setSearch(''); };
   const closeProductEditor = () => {
     productForm.images.forEach(image => { if (image.preview) URL.revokeObjectURL(image.preview); });
     setEditing(null);
@@ -113,13 +135,17 @@ export default function AdminDashboard() {
   };
   const saveUser = async e => { e.preventDefault(); await run(async () => { await adminService.createUser(userForm); setUserForm({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'CUSTOMER' }); }); };
   const saveNewArrivals = () => run(() => adminService.saveNewArrivals(newArrivalIds));
+  const confirmPayment = order => {
+    const reference = order.paymentMethod === 'mpesa' ? window.prompt('Optional M-Pesa receipt code. Leave blank if you are confirming from the M-Pesa message you received.') : undefined;
+    if (reference !== null) run(() => adminService.reviewOrderPayment(order.id, 'APPROVE', undefined, reference || undefined));
+  };
   const filtered = rows => (rows || []).filter(row => JSON.stringify(row).toLowerCase().includes(search.toLowerCase()));
 
   return <div className="admin-shell">
     <aside className={`admin-sidebar ${mobileNav ? 'is-open' : ''}`}>
       <div className="admin-brand"><span className="admin-brand-mark">LM</span><span><b>LynMarie</b><small>STORE ADMIN</small></span><button className="admin-mobile-close" onClick={() => setMobileNav(false)} aria-label="Close menu"><X size={19} /></button></div>
       <div className="admin-nav-label">MANAGE STORE</div>
-      <nav className="admin-nav">{navItems.map(([key, label, Icon]) => <button key={key} className={section === key ? 'active' : ''} onClick={() => setSectionAndClose(key)}><Icon size={18} /><span>{label}</span>{key === 'inquiries' && data.counts?.inquiries > 0 && <i>{data.counts.inquiries}</i>}</button>)}</nav>
+      <nav className="admin-nav">{navItems.map(([key, label, Icon]) => <button key={key} className={section === key ? 'active' : ''} onClick={() => setSectionAndClose(key)}><Icon size={18} /><span>{label}</span>{key === 'inquiries' && data.counts?.inquiries > 0 && <i>{data.counts.inquiries}</i>}{key === 'payments' && pendingPaymentCount > 0 && <i>{pendingPaymentCount}</i>}</button>)}</nav>
       <div className="admin-sidebar-bottom"><div className="admin-person"><span>{(user?.first_name || user?.email || 'A').slice(0, 1).toUpperCase()}</span><div><b>{user?.first_name || 'Administrator'}</b><small>{user?.email}</small></div></div><button onClick={logout}><LogOut size={17} /> Sign out</button></div>
     </aside>
     {mobileNav && <button className="admin-scrim" aria-label="Close admin navigation" onClick={() => setMobileNav(false)} />}
@@ -147,6 +173,7 @@ export default function AdminDashboard() {
           </>}
           {section === 'new-arrivals' && <NewArrivalsManager products={data.rows || []} selectedIds={newArrivalIds} setSelectedIds={setNewArrivalIds} search={search} setSearch={setSearch} save={saveNewArrivals} busy={busy} />}
           {section === 'cart' && <><SectionHeader title="Cart activity" caption="Recent items shoppers added to their baskets. Signed-in shoppers are linked to their customer profile." /><div className="admin-table-wrap"><table><thead><tr><th>Item</th><th>Customer</th><th>Email</th><th>Quantity</th><th>Added</th></tr></thead><tbody>{data.rows?.map(event => { const name = [event.user?.firstName, event.user?.lastName].filter(Boolean).join(' '); return <tr key={event.id}><td><div className="admin-product-cell"><img src={event.product?.images?.[0]?.url || '/logo.webp'} alt="" /><div><b>{event.product?.name || 'Product no longer listed'}</b><small>{event.product?.sku || 'SKU unavailable'}</small></div></div></td><td>{name || (event.user ? 'Customer' : `Guest · ${event.visitorId.slice(-6)}`)}</td><td>{event.user?.email || 'Not provided'}</td><td>{event.metadata?.quantity || 1}</td><td>{stamp(event.createdAt)}</td></tr>; })}</tbody></table>{!data.rows?.length && <Empty message="Cart additions will show here as visitors shop." />}</div></>}
+          {section === 'payments' && <PaymentQueue rows={data.rows || []} busy={busy} onApprove={confirmPayment} onHold={order => { const note = window.prompt('Reason for holding this payment?'); if (note?.trim()) run(() => adminService.reviewOrderPayment(order.id, 'REJECT', note)); }} />}
           {section === 'categories' && <><div className="admin-toolbar"><div><h2>Shop categories</h2><p>Organise products so shoppers can browse the right collections.</p></div></div><form className="admin-inline-form" onSubmit={e => { e.preventDefault(); run(async () => { if (editingCategory) await adminService.updateCategory(editingCategory, categoryForm); else await adminService.createCategory(categoryForm); setCategoryForm({ name: '', description: '' }); setEditingCategory(null); }); }}><input placeholder="Category name" required value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} /><input placeholder="Short description" value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} /><button className="admin-primary">{editingCategory ? <Pencil size={16} /> : <Plus size={16} />}{editingCategory ? ' Save category' : ' Add category'}</button></form><div className="admin-category-grid">{categories.map(c => <article key={c.id}><span><Tags size={19} /></span><div className="admin-category-info"><b>{c.name}</b><small>/{c.slug} · {c._count?.products || 0} products</small></div><button className="admin-category-action" title="Edit category" onClick={() => { setEditingCategory(c.id); setCategoryForm({ name: c.name, description: c.description || '' }); }}><Pencil size={14} /></button>{!c._count?.products && <button className="admin-category-action" title="Delete empty category" onClick={() => run(() => adminService.deleteCategory(c.id))}><Trash2 size={14} /></button>}</article>)}</div></>}
           {section === 'customers' && <><div className="admin-toolbar"><div><h2>Customers & staff</h2><p>Review customer accounts, control access and add team members.</p></div></div><form className="admin-user-form" onSubmit={saveUser}><input placeholder="First name" value={userForm.firstName} onChange={e => setUserForm({ ...userForm, firstName: e.target.value })} /><input placeholder="Last name" value={userForm.lastName} onChange={e => setUserForm({ ...userForm, lastName: e.target.value })} /><input type="email" placeholder="Email address" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} /><input type="tel" placeholder="Phone (optional)" value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })} /><input type="password" minLength={12} maxLength={72} placeholder="Temporary password (12+ chars)" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} /><select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}><option value="CUSTOMER">Customer</option><option value="SELLER">Shop seller</option>{user?.email?.toLowerCase() === 'adelewigitz@gmail.com' && <option value="ADMIN">Administrator</option>}</select><button className="admin-primary"><Plus size={16} /> Add user</button></form><SearchBox value={search} setValue={setSearch} /><div className="admin-table-wrap"><table><thead><tr><th>Customer / staff</th><th>Contact</th><th>Orders</th><th>Joined</th><th>Role</th><th>Access</th><th /></tr></thead><tbody>{filtered(data.rows).map(c => <tr key={c.id}><td><b>{[c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer'}</b><small>{c.role}</small></td><td>{c.email}<small>{c.phone || 'No phone added'}</small></td><td>{c._count?.orders || 0}</td><td>{stamp(c.createdAt)}</td><td>{user?.email?.toLowerCase() === 'adelewigitz@gmail.com' && c.email?.toLowerCase() !== 'adelewigitz@gmail.com' ? <select aria-label={`Role for ${c.email}`} value={c.role} onChange={e => run(() => adminService.updateUser(c.id, { role: e.target.value }))}><option value="CUSTOMER">Customer</option><option value="SELLER">Shop seller</option><option value="ADMIN">Administrator</option></select> : <span className="admin-badge muted">{c.role}</span>}</td><td><span className={`admin-badge ${c.isActive ? 'good' : 'muted'}`}>{c.isActive ? 'Active' : 'Disabled'}</span></td><td className="admin-row-actions"><button title={`Email a password reset link to ${c.email}`} disabled={busy} onClick={() => run(() => adminService.sendUserPasswordReset(c.id))}><Mail size={16} /></button>{c.email !== 'adelewigitz@gmail.com' && <button title={c.isActive ? 'Disable account' : 'Enable account'} onClick={() => run(() => adminService.updateUser(c.id, { isActive: !c.isActive }))}>{c.isActive ? <Archive size={16} /> : <Check size={16} />}</button>}</td></tr>)}</tbody></table></div></>}
           {section === 'orders' && <><SectionHeader title="Orders" caption="Online orders, shop pickups, and in-store POS sales. Review payment and collection status." /><SearchBox value={search} setValue={setSearch} /><div className="admin-table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total / paid</th><th>Fulfilment</th><th>Date</th><th>Status</th></tr></thead><tbody>{filtered(data.rows).map(o => <tr key={o.id}><td><b>{o.orderNumber || `#${o.id}`}</b><small>{o.orderType === 'POS' ? 'In-store POS' : o.paymentMethod || 'Payment pending'} · {o.paymentStatus || 'PENDING'}</small>{o.paymentReference && <small>Receipt code: {o.paymentReference}</small>}{o.paymentMessage && <details><summary>Full M-Pesa message</summary><pre style={{whiteSpace:'pre-wrap',maxWidth:320}}>{o.paymentMessage}</pre></details>}{o.paymentReviewNote && <small>Review note: {o.paymentReviewNote}</small>}</td><td>{o.billingFirstName} {o.billingLastName}<small>{o.user ? `Account: ${o.user.email}` : `Guest checkout · ${o.billingEmail}`}</small>{o.seller && <small>Seller: {[o.seller.firstName, o.seller.lastName].filter(Boolean).join(' ') || o.seller.email}</small>}</td><td>{o.items?.map(i => `${i.productName} ×${i.quantity}${i.variantDetails ? ` (${i.variantDetails})` : ''}`).join(', ')}</td><td><b>{money(o.total)}</b><small>Paid: {money(o.amountPaid ?? 0)}{o.amountTendered != null ? ` · Tendered ${money(o.amountTendered)}` : ''}</small>{Number(o.discountTotal || 0) > 0 && <small>Discount: {money(o.discountTotal)}{o.discountReason ? ` · ${o.discountReason}` : ''}</small>}</td><td>{o.fulfillmentMethod === 'PICKUP' ? 'Shop pickup' : o.fulfillmentMethod === 'IN_STORE' ? 'In store' : 'Delivery'}<small>{o.pickedUpAt ? `Collection confirmed ${new Date(o.pickedUpAt).toLocaleString()}` : o.fulfillmentMethod === 'PICKUP' ? 'Awaiting seller collection confirmation' : ''}{o.deliveryRider && <small>Rider: {[o.deliveryRider.firstName,o.deliveryRider.lastName].filter(Boolean).join(' ') || o.deliveryRider.email}</small>}{o.deliveryPaymentConfirmedAt && <small>Rider reported {money(o.deliveryPaymentAmount)} received</small>}</small></td><td>{stamp(o.createdAt)}</td><td>{o.fulfillmentMethod === 'DELIVERY' && o.paymentMethod === 'cod' && o.paymentStatus !== 'PAID' && <select aria-label={`Assign rider to ${o.orderNumber}`} value={o.deliveryRiderId || ''} onChange={e => run(() => adminService.assignDeliveryRider(o.id, e.target.value ? Number(e.target.value) : null))}><option value=''>Assign rider…</option>{staff.map(rider => <option key={rider.id} value={rider.id}>{[rider.firstName,rider.lastName].filter(Boolean).join(' ') || rider.email}</option>)}</select>}{['AWAITING_REVIEW','PENDING','REJECTED'].includes(o.paymentStatus) && (o.paymentMethod === 'mpesa' || o.deliveryPaymentConfirmedAt || (o.fulfillmentMethod === 'PICKUP' && o.paymentMethod === 'pay_on_pickup')) && <div className='flex gap-1'><button className='admin-primary' disabled={busy} onClick={() => { const reference = o.paymentMethod === 'mpesa' ? window.prompt('Optional M-Pesa receipt code. Leave blank if you are confirming from the M-Pesa message you received.') : undefined; if (reference !== null) run(() => adminService.reviewOrderPayment(o.id,'APPROVE',undefined,reference || undefined)); }}>{o.paymentMethod === 'mpesa' ? 'Confirm M-Pesa received' : 'Approve payment'}</button><button className='admin-secondary' disabled={busy} onClick={() => { const note = window.prompt('Reason for holding/rejecting this payment?'); if (note?.trim()) run(() => adminService.reviewOrderPayment(o.id,'REJECT',note)); }}>Hold</button></div>}<select value={o.status} onChange={e => run(() => adminService.setOrderStatus(o.id, e.target.value))}>{['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'REFUNDED'].map(s => <option key={s}>{s}</option>)}</select></td></tr>)}</tbody></table>{!data.rows?.length && <Empty message="Orders will appear here after checkout." />}</div></>}
@@ -191,6 +218,18 @@ function NewArrivalsManager({ products, selectedIds, setSelectedIds, search, set
       <img src={product.images?.[0]?.thumbnailUrl || product.images?.[0]?.url || '/logo.webp'} alt="" /><div className="new-arrivals-product-copy"><b>{product.name}</b><small>{product.sku || `Product #${product.id}`} · {money(product.salePrice ?? product.price)}</small></div>
       <button className="admin-secondary" disabled={selectedIds.length >= 8} onClick={() => setSelectedIds(ids => [...ids, product.id])}><Plus size={14} /> Add</button>
     </article>)}{!candidates.length && <Empty message={search ? 'No other published products match your search.' : 'There are no other published products to add.'} />}</div>
+  </>;
+}
+function PaymentQueue({ rows, busy, onApprove, onHold }) {
+  return <>
+    <SectionHeader title="Payment approvals" caption="Review M-Pesa orders and rider-confirmed cash-on-delivery payments. Approved payments move the order to Processing; mark it Completed from Orders after fulfilment." />
+    <div className="admin-table-wrap"><table><thead><tr><th>Order / customer</th><th>Payment evidence</th><th>Amount</th><th>Fulfilment</th><th>Action</th></tr></thead><tbody>{rows.map(order => <tr key={order.id}>
+      <td><b>{order.orderNumber || `#${order.id}`}</b><small>{[order.billingFirstName, order.billingLastName].filter(Boolean).join(' ') || 'Customer'} · {order.billingEmail || order.user?.email}</small></td>
+      <td><b>{order.paymentMethod === 'mpesa' ? 'M-Pesa' : 'Cash on delivery'}</b>{order.paymentReference && <small>Receipt: {order.paymentReference}</small>}{order.paymentMessage ? <details><summary>View full M-Pesa message</summary><pre style={{ whiteSpace: 'pre-wrap', maxWidth: 340 }}>{order.paymentMessage}</pre></details> : order.paymentMethod === 'mpesa' ? <small>No customer SMS or receipt code. Confirm against the store’s M-Pesa records.</small> : <small>Rider confirmed {money(order.deliveryPaymentAmount)} received</small>}</td>
+      <td><b>{money(order.total)}</b><small>Currently recorded paid: {money(order.amountPaid)}</small></td>
+      <td>{order.fulfillmentMethod === 'PICKUP' ? 'Shop collection' : 'Delivery'}<small>{order.deliveryRider ? `Rider: ${[order.deliveryRider.firstName, order.deliveryRider.lastName].filter(Boolean).join(' ') || order.deliveryRider.email}` : ''}</small></td>
+      <td><div className="flex flex-wrap gap-2"><button className="admin-primary" disabled={busy} onClick={() => onApprove(order)}>{order.paymentMethod === 'mpesa' ? 'Confirm payment received' : 'Approve rider payment'}</button><button className="admin-secondary" disabled={busy} onClick={() => onHold(order)}>Hold</button></div></td>
+    </tr>)}</tbody></table>{!rows.length && <Empty message="No payments are waiting for approval." />}</div>
   </>;
 }
 function Empty({ message }) { return <div className="admin-empty">{message}</div>; }

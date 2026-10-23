@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/layout/Navbar';
@@ -60,26 +60,8 @@ function StoreAnalytics() {
 
 function AppContent() {
   const location = useLocation();
-  const [renderedLocation, setRenderedLocation] = useState(location);
-  const [transitionPhase, setTransitionPhase] = useState('entering');
-  const routeTimer = useRef(null);
   const isStaffDashboard = location.pathname.startsWith('/admin') || location.pathname.startsWith('/seller');
   const isHome = location.pathname === '/';
-
-  useEffect(() => {
-    if (location.pathname === renderedLocation.pathname) {
-      if (location.key !== renderedLocation.key) setRenderedLocation(location);
-      return undefined;
-    }
-
-    window.clearTimeout(routeTimer.current);
-    setTransitionPhase('leaving');
-    routeTimer.current = window.setTimeout(() => {
-      setRenderedLocation(location);
-      setTransitionPhase('entering');
-    }, 110);
-    return () => window.clearTimeout(routeTimer.current);
-  }, [location, renderedLocation]);
 
   useEffect(() => {
     const privatePage = /^\/(auth|admin|seller|cart|checkout|my-account|order-confirmation)(\/|$)/.test(location.pathname);
@@ -103,9 +85,8 @@ function AppContent() {
     <div className={isStaffDashboard ? 'min-h-screen' : `storefront-shell min-h-screen flex flex-col${isHome ? ' is-home' : ''}`}>
       {!isStaffDashboard && <Navbar />}
       <main className="flex-1">
-        <div className={`route-transition route-transition--${transitionPhase}`}>
         <Suspense fallback={<Loader size="large" fullScreen label="Preparing your page" />}>
-          <Routes location={renderedLocation}>
+          <Routes>
                 <Route path="/admin" element={<AdminOnly />} />
                 <Route path="/seller" element={<SellerOnly />} />
                 <Route path="/" element={<Home />} />
@@ -145,7 +126,6 @@ function AppContent() {
                 <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-        </div>
       </main>
       {!isStaffDashboard && <Footer />}
       {!isStaffDashboard && <CartDrawer />}
