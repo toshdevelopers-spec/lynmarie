@@ -68,6 +68,7 @@ const Navbar = () => {
     { slug: 'office-wear', label: 'Office' },
     { slug: 'evening-dinner-dresses', label: 'Dinner Dresses' },
     { slug: 'two-piece-sets', label: 'Sets' },
+    { slug: 'kidswear', label: 'Kidswear' },
     { slug: 'bags', label: 'Bags' },
   ].map(item => ({ ...item, category: availableCategories.find(category => category.slug === item.slug) })).filter(item => item.category);
   const featuredSlugs = new Set(featuredNav.map(item => item.slug));

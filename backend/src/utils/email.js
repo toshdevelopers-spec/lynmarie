@@ -31,6 +31,40 @@ export async function sendPasswordResetEmail(to, token) {
   return id;
 }
 
+export async function sendAccountWelcomeEmail(user) {
+  return deliver({
+    to: user.email, subject: "Welcome to Lyn Marie Boutique",
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#241532"><h1 style="color:#56347b">Welcome to Lyn Marie Boutique</h1><p>Hi ${escapeHtml(user.firstName || "there")}, your account is ready. Explore dresses, jumpsuits, office wear and occasion outfits from our Nairobi boutique, with delivery across Kenya.</p><p><a href="https://www.lynmarieboutique.com/shop" style="display:inline-block;padding:12px 20px;background:#56347b;color:white;text-decoration:none;border-radius:6px">Explore the collection</a></p></div>`,
+    text: `Welcome to Lyn Marie Boutique, ${user.firstName || "there"}! Your account is ready. Shop dresses, jumpsuits, office wear and occasion outfits with delivery across Kenya: https://www.lynmarieboutique.com/shop`,
+  });
+}
+
+export async function sendPasswordChangedEmail(user) {
+  return deliver({
+    to: user.email, subject: "Your Lyn Marie Boutique password was changed",
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#241532"><h1 style="color:#56347b">Password updated</h1><p>Hi ${escapeHtml(user.firstName || "there")}, your Lyn Marie Boutique account password was changed successfully.</p><p>If you did not make this change, contact us at <a href="mailto:info@lynmarieboutique.com">info@lynmarieboutique.com</a>.</p></div>`,
+    text: `Hi ${user.firstName || "there"}, your Lyn Marie Boutique account password was changed. If you did not make this change, contact info@lynmarieboutique.com.`,
+  });
+}
+
+export async function sendInquiryNotice(inquiry, recipients = []) {
+  const jobs = [...new Set(recipients.filter(Boolean))].map(to => deliver({
+    to, subject: `New website enquiry from ${inquiry.name} | Lyn Marie Boutique`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#241532"><h1 style="color:#56347b">New customer enquiry</h1><p><strong>${escapeHtml(inquiry.name)}</strong> &lt;${escapeHtml(inquiry.email)}&gt;</p><p style="white-space:pre-wrap">${escapeHtml(inquiry.message)}</p></div>`,
+    text: `New customer enquiry from ${inquiry.name} <${inquiry.email}>\n\n${inquiry.message}`,
+  }));
+  const results = await Promise.allSettled(jobs);
+  results.forEach(result => { if (result.status === "rejected") console.error("Enquiry email delivery failed:", result.reason?.message || "email provider error"); });
+  return { sent: results.filter(result => result.status === "fulfilled").length, failed: results.filter(result => result.status === "rejected").length };
+}
+
+export async function sendOrderUpdateEmail(order, change) {
+  if (!order.billingEmail) return;
+  const label = change.kind === "payment" ? "Payment update" : "Delivery update";
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#241532"><h1 style="color:#56347b">${label} for order ${escapeHtml(order.orderNumber || `#${order.id}`)}</h1><p>Hi ${escapeHtml(order.billingFirstName || "there")},</p><p>${escapeHtml(change.message)}</p><p>Questions? Email <a href="mailto:info@lynmarieboutique.com">info@lynmarieboutique.com</a>.</p></div>`;
+  await deliver({ to: order.billingEmail, subject: `${label} · ${order.orderNumber || `#${order.id}`} | Lyn Marie Boutique`, html, text: `${label} for order ${order.orderNumber || `#${order.id}`}: ${change.message}` });
+}
+
 export async function sendOrderEmails(order, adminEmails = []) {
   const itemsHtml = order.items.map(item => `<tr><td style="padding:8px 0;border-bottom:1px solid #eee">${escapeHtml(item.productName)} × ${Number(item.quantity)}</td><td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right">KES ${Number(item.totalPrice).toLocaleString("en-KE", { minimumFractionDigits: 2 })}</td></tr>`).join("");
   const itemsText = order.items.map(item => `${item.productName} × ${item.quantity} — KES ${Number(item.totalPrice).toLocaleString("en-KE", { minimumFractionDigits: 2 })}`).join("\n");

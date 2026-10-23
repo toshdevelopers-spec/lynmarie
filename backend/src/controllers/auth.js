@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
-import { sendPasswordResetEmail } from "../utils/email.js";
+import { sendAccountWelcomeEmail, sendPasswordResetEmail } from "../utils/email.js";
 import { passwordSchema } from "../utils/security.js";
 
 const registerSchema = z.object({ email: z.string().email().max(254).transform(v => v.toLowerCase()), password: passwordSchema, firstName: z.string().trim().min(1).max(100).optional(), lastName: z.string().trim().min(1).max(100).optional(), phone: z.string().max(40).optional() });
@@ -17,6 +17,8 @@ export const register = asyncHandler(async (req, res) => {
   const passwordHash = await bcrypt.hash(body.password, 12);
   const { password, ...profile } = body;
   const user = existing ? await prisma.user.update({ where: { id: existing.id }, data: { ...profile, passwordHash, isActive: true } }) : await prisma.user.create({ data: { ...profile, passwordHash } });
+  try { await sendAccountWelcomeEmail(user); }
+  catch (error) { console.error("Welcome email could not be sent:", error.message); }
   res.status(201).json({ success: true, data: publicUser(user), token: tokenFor(user) });
 });
 export const login = asyncHandler(async (req, res) => {
@@ -38,10 +40,10 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
     await prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } });
     await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 60 * 60 * 1000) } });
-    try {
-      await sendPasswordResetEmail(user.email, resetToken);
-    } catch (error) {
+    try { await sendPasswordResetEmail(user.email, resetToken); }
+    catch (error) {
       console.error("Password reset email could not be sent:", error.message);
+      return res.status(503).json({ success: false, message: "We could not send the reset email just now. Please try again." });
     }
   }
   const response = { success: true, message: "If an account exists, password reset instructions will be sent." };

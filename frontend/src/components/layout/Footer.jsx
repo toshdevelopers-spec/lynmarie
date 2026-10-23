@@ -29,7 +29,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li><Link to="/collections" className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">All collections</Link></li>
-              {availableCategories.slice(0, 5).map(category => (
+              {availableCategories.map(category => (
                 <li key={category.id}>
                   <Link to={`/category/${category.slug}`} className="text-purple-200 hover:text-purple-100 transition-colors text-sm font-sans">
                     {category.name}

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store } from 'lucide-react';
+import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { adminService } from '../../services/admin';
 import Loader from '../../components/ui/Loader';
 
 const navItems = [
-  ['overview', 'Overview', LayoutDashboard], ['products', 'Products & stock', Shirt], ['categories', 'Categories', Tags], ['cart', 'Cart activity', ShoppingBag],
+  ['overview', 'Overview', LayoutDashboard], ['products', 'Products & stock', Shirt], ['new-arrivals', 'New Arrivals', Sparkles], ['categories', 'Categories', Tags], ['cart', 'Cart activity', ShoppingBag],
   ['customers', 'Customers & staff', Users], ['orders', 'Orders', ShoppingBag], ['reviews', 'Reviews', Star], ['inquiries', 'Enquiries', MessageSquareText],
 ];
 const emptyProduct = { name: '', description: '', shortDescription: '', sku: '', barcode: '', price: '', regularPrice: '', salePrice: '', stockQuantity: '1', categoryIds: [], images: [], attributes: [], metaTitle: '', metaDescription: '', featured: false, manageStock: true, status: 'PUBLISHED' };
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [mobileNav, setMobileNav] = useState(false);
   const [editing, setEditing] = useState(null);
   const [productForm, setProductForm] = useState(emptyProduct);
+  const [newArrivalIds, setNewArrivalIds] = useState([]);
   const [userForm, setUserForm] = useState({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'CUSTOMER' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
   const [editingCategory, setEditingCategory] = useState(null);
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
     try {
       if (section === 'overview') setData(await adminService.dashboard());
       else if (section === 'products') { const [rows, categoryRows] = await Promise.all([adminService.products(), adminService.categories()]); setData({ rows }); setCategories(categoryRows); }
+      else if (section === 'new-arrivals') { const [rows, selection] = await Promise.all([adminService.products(), adminService.newArrivals()]); setData({ rows }); setNewArrivalIds(selection.selectedIds || []); }
       else if (section === 'cart') setData({ rows: await adminService.cartActivity() });
       else if (section === 'categories') setCategories(await adminService.categories());
       else if (section === 'customers') setData({ rows: await adminService.customers() });
@@ -109,6 +111,7 @@ export default function AdminDashboard() {
     });
   };
   const saveUser = async e => { e.preventDefault(); await run(async () => { await adminService.createUser(userForm); setUserForm({ firstName: '', lastName: '', email: '', phone: '', password: '', role: 'CUSTOMER' }); }); };
+  const saveNewArrivals = () => run(() => adminService.saveNewArrivals(newArrivalIds));
   const filtered = rows => (rows || []).filter(row => JSON.stringify(row).toLowerCase().includes(search.toLowerCase()));
 
   return <div className="admin-shell">
@@ -131,6 +134,7 @@ export default function AdminDashboard() {
             <SearchBox value={search} setValue={setSearch} />
             <div className="admin-table-wrap"><table><thead><tr><th>Product</th><th>Price</th><th>Stock</th><th>Status</th><th>SEO</th><th /></tr></thead><tbody>{filtered(data.rows).map(p => <tr key={p.id}><td><div className="admin-product-cell"><img src={p.images?.[0]?.url || '/logo.webp'} alt="" /><div><b>{p.name}</b><small>{p.barcode || p.sku || 'No scan code'} · {p.categories?.map(c => c.category?.name || c.name).join(', ') || 'Uncategorised'}</small></div></div></td><td>{p.salePrice ? <><b>{money(p.salePrice)}</b><del>{money(p.regularPrice)}</del></> : money(p.price)}</td><td>{p.manageStock ? `${p.stockQuantity ?? 0} units` : 'Not tracked'}</td><td><span className={`admin-badge ${p.status === 'PUBLISHED' ? 'good' : 'muted'}`}>{p.status}</span></td><td>{p.metaTitle || p.metaDescription ? 'Set' : 'Missing'}</td><td className="admin-row-actions"><button aria-label="Edit product" onClick={() => openProduct(p)}><Pencil size={16} /></button><button aria-label="Remove product" onClick={() => run(() => adminService.deleteProduct(p.id))}><Archive size={16} /></button></td></tr>)}</tbody></table>{!data.rows?.length && <Empty message="No products found." />}</div>
           </>}
+          {section === 'new-arrivals' && <NewArrivalsManager products={data.rows || []} selectedIds={newArrivalIds} setSelectedIds={setNewArrivalIds} search={search} setSearch={setSearch} save={saveNewArrivals} busy={busy} />}
           {section === 'cart' && <><SectionHeader title="Cart activity" caption="Recent items shoppers added to their baskets. Signed-in shoppers are linked to their customer profile." /><div className="admin-table-wrap"><table><thead><tr><th>Item</th><th>Customer</th><th>Email</th><th>Quantity</th><th>Added</th></tr></thead><tbody>{data.rows?.map(event => { const name = [event.user?.firstName, event.user?.lastName].filter(Boolean).join(' '); return <tr key={event.id}><td><div className="admin-product-cell"><img src={event.product?.images?.[0]?.url || '/logo.webp'} alt="" /><div><b>{event.product?.name || 'Product no longer listed'}</b><small>{event.product?.sku || 'SKU unavailable'}</small></div></div></td><td>{name || (event.user ? 'Customer' : `Guest · ${event.visitorId.slice(-6)}`)}</td><td>{event.user?.email || 'Not provided'}</td><td>{event.metadata?.quantity || 1}</td><td>{stamp(event.createdAt)}</td></tr>; })}</tbody></table>{!data.rows?.length && <Empty message="Cart additions will show here as visitors shop." />}</div></>}
           {section === 'categories' && <><div className="admin-toolbar"><div><h2>Shop categories</h2><p>Organise products so shoppers can browse the right collections.</p></div></div><form className="admin-inline-form" onSubmit={e => { e.preventDefault(); run(async () => { if (editingCategory) await adminService.updateCategory(editingCategory, categoryForm); else await adminService.createCategory(categoryForm); setCategoryForm({ name: '', description: '' }); setEditingCategory(null); }); }}><input placeholder="Category name" required value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} /><input placeholder="Short description" value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} /><button className="admin-primary">{editingCategory ? <Pencil size={16} /> : <Plus size={16} />}{editingCategory ? ' Save category' : ' Add category'}</button></form><div className="admin-category-grid">{categories.map(c => <article key={c.id}><span><Tags size={19} /></span><div className="admin-category-info"><b>{c.name}</b><small>/{c.slug} · {c._count?.products || 0} products</small></div><button className="admin-category-action" title="Edit category" onClick={() => { setEditingCategory(c.id); setCategoryForm({ name: c.name, description: c.description || '' }); }}><Pencil size={14} /></button>{!c._count?.products && <button className="admin-category-action" title="Delete empty category" onClick={() => run(() => adminService.deleteCategory(c.id))}><Trash2 size={14} /></button>}</article>)}</div></>}
           {section === 'customers' && <><div className="admin-toolbar"><div><h2>Customers & staff</h2><p>Review customer accounts, control access and add team members.</p></div></div><form className="admin-user-form" onSubmit={saveUser}><input placeholder="First name" value={userForm.firstName} onChange={e => setUserForm({ ...userForm, firstName: e.target.value })} /><input placeholder="Last name" value={userForm.lastName} onChange={e => setUserForm({ ...userForm, lastName: e.target.value })} /><input type="email" placeholder="Email address" required value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} /><input type="tel" placeholder="Phone (optional)" value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })} /><input type="password" minLength={12} maxLength={72} placeholder="Temporary password (12+ chars)" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} /><select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}><option value="CUSTOMER">Customer</option><option value="SELLER">Shop seller</option>{user?.email?.toLowerCase() === 'adelewigitz@gmail.com' && <option value="ADMIN">Administrator</option>}</select><button className="admin-primary"><Plus size={16} /> Add user</button></form><SearchBox value={search} setValue={setSearch} /><div className="admin-table-wrap"><table><thead><tr><th>Customer / staff</th><th>Contact</th><th>Orders</th><th>Joined</th><th>Role</th><th>Access</th><th /></tr></thead><tbody>{filtered(data.rows).map(c => <tr key={c.id}><td><b>{[c.firstName, c.lastName].filter(Boolean).join(' ') || 'Customer'}</b><small>{c.role}</small></td><td>{c.email}<small>{c.phone || 'No phone added'}</small></td><td>{c._count?.orders || 0}</td><td>{stamp(c.createdAt)}</td><td>{user?.email?.toLowerCase() === 'adelewigitz@gmail.com' && c.email?.toLowerCase() !== 'adelewigitz@gmail.com' ? <select aria-label={`Role for ${c.email}`} value={c.role} onChange={e => run(() => adminService.updateUser(c.id, { role: e.target.value }))}><option value="CUSTOMER">Customer</option><option value="SELLER">Shop seller</option><option value="ADMIN">Administrator</option></select> : <span className="admin-badge muted">{c.role}</span>}</td><td><span className={`admin-badge ${c.isActive ? 'good' : 'muted'}`}>{c.isActive ? 'Active' : 'Disabled'}</span></td><td className="admin-row-actions"><button title={`Email a password reset link to ${c.email}`} disabled={busy} onClick={() => run(() => adminService.sendUserPasswordReset(c.id))}><Mail size={16} /></button>{c.email !== 'adelewigitz@gmail.com' && <button title={c.isActive ? 'Disable account' : 'Enable account'} onClick={() => run(() => adminService.updateUser(c.id, { isActive: !c.isActive }))}>{c.isActive ? <Archive size={16} /> : <Check size={16} />}</button>}</td></tr>)}</tbody></table></div></>}
@@ -149,6 +153,35 @@ function Overview({ data, onGo }) {
 }
 function SectionHeader({ title, caption }) { return <div className="admin-toolbar"><div><h2>{title}</h2><p>{caption}</p></div></div>; }
 function SearchBox({ value, setValue }) { return <label className="admin-search"><Search size={17} /><input value={value} onChange={e => setValue(e.target.value)} placeholder="Search this list" /></label>; }
+function NewArrivalsManager({ products, selectedIds, setSelectedIds, search, setSearch, save, busy }) {
+  const selectedProducts = selectedIds.map(id => products.find(product => product.id === id)).filter(Boolean);
+  const selected = new Set(selectedIds);
+  const candidates = products.filter(product => product.status === 'PUBLISHED' && !selected.has(product.id) && JSON.stringify(product).toLowerCase().includes(search.toLowerCase()));
+  const move = (index, direction) => setSelectedIds(ids => {
+    const next = [...ids];
+    const target = index + direction;
+    if (target < 0 || target >= next.length) return ids;
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  });
+
+  return <>
+    <div className="admin-toolbar"><div><h2>Homepage New Arrivals</h2><p>Choose up to 8 published products, set their order, and save the list shown on your homepage.</p></div><button className="admin-primary" onClick={save} disabled={busy}>Save New Arrivals</button></div>
+    <section className="admin-panel new-arrivals-selection">
+      <div className="admin-panel-heading"><div><h3>Selected products <span className="new-arrivals-count">{selectedIds.length}/8</span></h3><p>Use the arrows to change display order. Remove items whenever you like.</p></div>{selectedIds.length > 0 && <button onClick={() => setSelectedIds([])}>Clear all</button>}</div>
+      {selectedProducts.length ? <div className="new-arrivals-selected-list">{selectedProducts.map((product, index) => <article className="new-arrivals-selected-item" key={product.id}>
+        <span className="new-arrivals-rank">{index + 1}</span><img src={product.images?.[0]?.thumbnailUrl || product.images?.[0]?.url || '/logo.webp'} alt="" />
+        <div className="new-arrivals-product-copy"><b>{product.name}</b><small>{product.sku || `Product #${product.id}`} · {money(product.salePrice ?? product.price)}</small></div>
+        <div className="new-arrivals-item-actions"><button aria-label={`Move ${product.name} up`} disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp size={15} /></button><button aria-label={`Move ${product.name} down`} disabled={index === selectedIds.length - 1} onClick={() => move(index, 1)}><ArrowDown size={15} /></button><button aria-label={`Remove ${product.name} from New Arrivals`} onClick={() => setSelectedIds(ids => ids.filter(id => id !== product.id))}><Trash2 size={15} /></button></div>
+      </article>)}</div> : <Empty message="No products selected. Add published products below, or save an empty list to clear New Arrivals from the homepage." />}
+    </section>
+    <div className="new-arrivals-catalog-heading"><div><h3>Add from your product catalogue</h3><p>{selectedIds.length >= 8 ? 'You have reached the 8 product limit.' : 'Only published products can be added.'}</p></div><SearchBox value={search} setValue={setSearch} /></div>
+    <div className="new-arrivals-candidate-grid">{candidates.map(product => <article className="new-arrivals-candidate" key={product.id}>
+      <img src={product.images?.[0]?.thumbnailUrl || product.images?.[0]?.url || '/logo.webp'} alt="" /><div className="new-arrivals-product-copy"><b>{product.name}</b><small>{product.sku || `Product #${product.id}`} · {money(product.salePrice ?? product.price)}</small></div>
+      <button className="admin-secondary" disabled={selectedIds.length >= 8} onClick={() => setSelectedIds(ids => [...ids, product.id])}><Plus size={14} /> Add</button>
+    </article>)}{!candidates.length && <Empty message={search ? 'No other published products match your search.' : 'There are no other published products to add.'} />}</div>
+  </>;
+}
 function Empty({ message }) { return <div className="admin-empty">{message}</div>; }
 function ProductEditor({ form, setForm, categories, isEditing, close, save, busy }) {
   const [photoError, setPhotoError] = useState('');

@@ -17,7 +17,17 @@ export const errorHandler = (err, req, res, next) => {
     return res.status(503).json({ success: false, message: "The store database schema is missing or out of date. Run the backend migrations." });
   }
   const status = Number(err.status) || 500;
-  if (status >= 500) console.error("Unhandled API error:", err.message);
+  if (status >= 500) {
+    // Keep request data out of logs: admin payloads may contain customer and
+    // product information. The route and stack are enough to locate failures.
+    console.error("Unhandled API error:", {
+      method: req.method,
+      path: req.originalUrl,
+      code: err.code,
+      message: err.message,
+      stack: err.stack,
+    });
+  }
   res.status(status).json({ success: false, message: status >= 500 ? "Internal server error" : err.message });
 };
 export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { categorySeoFor } from '../src/utils/categorySeo.js';
 
 const origin = 'https://www.lynmarieboutique.com';
 const api = (process.env.VITE_API_URL || 'https://lynmarie-backend.vercel.app/api').replace(/\/+$/, '');
@@ -29,6 +30,15 @@ try {
     totalPages = result.pagination?.totalPages || 1;
     page += 1;
   } while (page <= totalPages);
+
+  let categories = [];
+  try {
+    const response = await fetch(`${api}/categories`, { signal: AbortSignal.timeout(20000) });
+    if (response.ok) categories = (await response.json()).data || [];
+    else console.warn(`Category SEO prerender skipped: category API returned ${response.status}.`);
+  } catch (error) {
+    console.warn(`Category SEO prerender skipped: ${error.cause?.code || error.message}`);
+  }
 
   const template = await readFile(path.resolve('dist/index.html'), 'utf8');
   for (const product of allProducts) {
@@ -60,7 +70,56 @@ try {
     await mkdir(outputDir, { recursive: true });
     await writeFile(path.join(outputDir, `${slug}.html`), html);
   }
+
+  let prerenderedCategories = 0;
+  for (const category of categories) {
+    const slug = String(category.slug || '').replace(/[^a-z0-9-]/gi, '');
+    if (!slug) continue;
+    const items = allProducts.filter(product => product.categories?.some(item => item.slug === category.slug));
+    if (!items.length) continue;
+    const seo = categorySeoFor(category.slug, category.name);
+    const url = `${origin}/category/${slug}`;
+    const cards = items.map(product => {
+      const productSlug = String(product.slug || product.id).replace(/[^a-z0-9-]/gi, '');
+      const image = product.images?.[0]?.thumbnail || product.images?.[0]?.src;
+      const price = product.on_sale && product.sale_price ? product.sale_price : product.price;
+      return `<article style="min-width:0;border:1px solid #eee5ed;border-radius:12px;overflow:hidden;background:#fff"><a href="/product/${escapeHtml(productSlug)}" style="color:#241532;text-decoration:none"><img src="${escapeHtml(image || `${origin}/logo.webp`)}" alt="${escapeHtml(product.images?.[0]?.alt || `${product.name} from LynMarie Boutique, Nairobi, Kenya`)}" loading="lazy" style="display:block;width:100%;aspect-ratio:3/4;object-fit:cover"><div style="padding:12px"><h3 style="margin:0 0 8px;font-size:16px">${escapeHtml(product.name)}</h3><p style="margin:0;color:#4c00b0;font-weight:700">KES ${escapeHtml(price)}</p></div></a></article>`;
+    }).join('');
+    const related = seo.related.map(item => `<li><a href="/category/${escapeHtml(item.slug)}">${escapeHtml(item.label)}</a></li>`).join('');
+    const collectionSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: seo.heading,
+      description: seo.description,
+      url,
+      mainEntity: {
+        '@type': 'ItemList',
+        numberOfItems: items.length,
+        itemListElement: items.map((product, index) => ({
+          '@type': 'ListItem', position: index + 1,
+          url: `${origin}/product/${String(product.slug || product.id).replace(/[^a-z0-9-]/gi, '')}`,
+          name: product.name,
+        })),
+      },
+    };
+    const fallback = `<main style="max-width:1200px;margin:2rem auto;padding:1rem;font-family:Arial,sans-serif;color:#241532"><nav aria-label="Breadcrumb"><a href="/">LynMarie Boutique</a> / <a href="/collections">Clothing collections</a> / ${escapeHtml(category.name)}</nav><h1>${escapeHtml(seo.heading)}</h1><p style="max-width:850px;line-height:1.7">${escapeHtml(seo.intro)}</p><nav aria-label="Related collections"><ul>${related}</ul></nav><h2>Shop ${escapeHtml(category.name)} online</h2><p>${items.length} styles available from LynMarie Boutique in Nairobi, with delivery across Kenya and collection at Jamia Mall.</p><section aria-label="${escapeHtml(category.name)} products" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px">${cards}</section></main>`;
+    const image = items[0]?.images?.[0]?.src || `${origin}/logo.webp`;
+    const html = template
+      .replace(/<title>.*?<\/title>/s, `<title>${escapeHtml(seo.title)}</title>`)
+      .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${escapeHtml(seo.description)}" />`)
+      .replace(/<link rel="canonical" href="[^"]*"\s*\/>/, `<link rel="canonical" href="${escapeHtml(url)}" />`)
+      .replace(/<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${escapeHtml(seo.title)}" />`)
+      .replace(/<meta property="og:description" content="[^"]*"\s*\/>/, `<meta property="og:description" content="${escapeHtml(seo.description)}" />`)
+      .replace(/<meta property="og:url" content="[^"]*"\s*\/>/, `<meta property="og:url" content="${escapeHtml(url)}" />`)
+      .replace(/<meta property="og:image" content="[^"]*"\s*\/>/, `<meta property="og:image" content="${escapeHtml(image)}" />`)
+      .replace('<div id="root"></div>', `<div id="root">${fallback}</div>`)
+      .replace('</head>', `<script type="application/ld+json">${JSON.stringify(collectionSchema).replace(/</g, '\\u003c')}</script></head>`);
+    await mkdir(path.resolve('dist/category'), { recursive: true });
+    await writeFile(path.resolve('dist/category', `${slug}.html`), html);
+    prerenderedCategories += 1;
+  }
   console.info(`Generated SEO product pages for ${allProducts.length} live products.`);
+  console.info(`Generated SEO category pages for ${prerenderedCategories} live collections.`);
 } catch (error) {
   console.warn(`Product SEO prerender skipped: ${error.message}`);
 }

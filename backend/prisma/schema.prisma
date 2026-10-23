@@ -148,6 +148,14 @@ model Product {
   @@map("products")
 }
 
+model StoreSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("store_settings")
+}
+
 model ProductImage {
   id           Int      @id @default(autoincrement())
   wordpressId  Int?

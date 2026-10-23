@@ -4,8 +4,9 @@ import { v2 as cloudinary } from "cloudinary";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 import crypto from "node:crypto";
-import { sendPasswordResetEmail } from "../utils/email.js";
+import { sendOrderUpdateEmail, sendPasswordResetEmail } from "../utils/email.js";
 import { passwordSchema } from "../utils/security.js";
+import { getNewArrivalIds, saveNewArrivalIds } from "../services/newArrivals.js";
 
 const productInclude = { images: { orderBy: { position: "asc" } }, categories: { include: { category: true } }, attributes: { include: { attribute: true }, orderBy: { attributeId: "asc" } }, brand: true };
 const slugify = value => value.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -18,7 +19,7 @@ const uniqueProductSlug = async (value, excludeId) => {
   }
   return candidate;
 };
-const productInput = z.object({
+const productInputFields = z.object({
   name: z.string().trim().min(1).max(250), slug: z.string().trim().optional(), description: z.string().optional().nullable(),
   shortDescription: z.string().optional().nullable(), sku: z.string().trim().max(100).optional().nullable().transform(value => value || null), barcode: z.string().trim().max(100).optional().nullable().transform(value => value || null), price: z.coerce.number().min(0),
   regularPrice: z.coerce.number().min(0).optional().nullable(), salePrice: z.coerce.number().min(0).optional().nullable(),
@@ -28,7 +29,14 @@ const productInput = z.object({
   imageUrls: z.array(z.string().url()).max(30).default([]), imageThumbnails: z.array(z.string().url().nullable()).max(30).optional(), metaTitle: z.string().max(250).optional().nullable(), metaDescription: z.string().max(500).optional().nullable(),
   attributes: z.array(z.object({ name: z.string().trim().min(1).max(80), values: z.array(z.string().trim().min(1).max(100)).max(100) })).max(10).optional(),
   brandId: z.coerce.number().int().positive().optional().nullable(),
-}).superRefine((v, ctx) => { if (v.salePrice != null && v.regularPrice != null && v.salePrice >= v.regularPrice) ctx.addIssue({ code: "custom", path: ["salePrice"], message: "Sale price must be lower than regular price" }); });
+});
+const validateProductPricing = (value, ctx) => {
+  if (value.salePrice != null && value.regularPrice != null && value.salePrice >= value.regularPrice) {
+    ctx.addIssue({ code: "custom", path: ["salePrice"], message: "Sale price must be lower than regular price" });
+  }
+};
+const productInput = productInputFields.superRefine(validateProductPricing);
+const productUpdateInput = productInputFields.partial().superRefine(validateProductPricing);
 
 async function replaceProductAttributes(tx, productId, attributes) {
   await tx.productAttributeValue.deleteMany({ where: { productId } });
@@ -71,6 +79,24 @@ export const products = asyncHandler(async (req, res) => {
   const rows = await prisma.product.findMany({ include: productInclude, orderBy: { updatedAt: "desc" } });
   res.json({ success: true, data: rows });
 });
+export const newArrivals = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: { selectedIds: await getNewArrivalIds() } });
+});
+export const updateNewArrivals = asyncHandler(async (req, res) => {
+  const { ids } = z.object({
+    ids: z.array(z.coerce.number().int().positive()).max(8)
+      .refine(values => new Set(values).size === values.length, "Choose each product only once"),
+  }).parse(req.body);
+  const published = await prisma.product.findMany({
+    where: { id: { in: ids }, status: "PUBLISHED" },
+    select: { id: true },
+  });
+  if (published.length !== ids.length) {
+    return res.status(400).json({ success: false, message: "New arrivals can only include published products" });
+  }
+  await saveNewArrivalIds(ids);
+  res.json({ success: true, data: { selectedIds: ids }, message: "New arrivals updated" });
+});
 export const productImageSignature = asyncHandler(async (req, res) => {
   const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_API_KEY: apiKey, CLOUDINARY_API_SECRET: apiSecret } = process.env;
   if (!cloudName || !apiKey || !apiSecret) return res.status(503).json({ success: false, message: "Cloudinary image uploads are not configured" });
@@ -94,7 +120,7 @@ export const createProduct = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: row });
 });
 export const updateProduct = asyncHandler(async (req, res) => {
-  const id = z.coerce.number().int().positive().parse(req.params.id); const input = productInput.partial().parse(req.body);
+  const id = z.coerce.number().int().positive().parse(req.params.id); const input = productUpdateInput.parse(req.body);
   const { categoryIds, imageUrls, imageThumbnails, attributes, ...fields } = input; const update = { ...fields };
   if (fields.name || fields.slug) {
     const current = await prisma.product.findUniqueOrThrow({ where: { id }, select: { name: true, slug: true } });
@@ -191,6 +217,11 @@ export const setOrderStatus = asyncHandler(async (req, res) => {
     }
     return tx.order.update({ where: { id }, data: { status }, include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } } } });
   });
+  if (row.status !== "PENDING") {
+    const messages = { PROCESSING: "Your order is being prepared. We will share another update when it is ready for delivery or collection.", COMPLETED: row.fulfillmentMethod === "PICKUP" ? "Your order is ready for collection or has been collected. Thank you for shopping with us." : "Your order has been marked complete. Thank you for shopping with us.", CANCELLED: "Your order has been cancelled. Please contact us if you need help.", REFUNDED: "Your order has been marked as refunded. Please allow time for your payment provider to process the refund." };
+    try { await sendOrderUpdateEmail(row, { kind: "delivery", message: messages[row.status] }); }
+    catch (error) { console.error("Order status email could not be sent:", error.message); }
+  }
   res.json({ success: true, data: row });
 });
 export const reviews = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.review.findMany({ include: { product: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" } }) }));

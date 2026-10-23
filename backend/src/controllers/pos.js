@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
+import { sendOrderUpdateEmail } from "../utils/email.js";
 
 const inventoryInclude = {
   images: { orderBy: { position: "asc" }, take: 1 },
@@ -114,6 +115,10 @@ const collectPickupOrder = asyncHandler(async (req, res) => {
   } });
   if (!result.count) return res.status(409).json({ success: false, message: "This pickup has already been collected or paid" });
   const updated = await prisma.order.findUnique({ where: { id }, include: { items: true, seller: { select: { id: true, firstName: true, lastName: true, email: true } } } });
+  if (order.paymentStatus !== "PAID") {
+    try { await sendOrderUpdateEmail(updated, { kind: "payment", message: `We have recorded your payment of KES ${total.toLocaleString("en-KE", { minimumFractionDigits: 2 })} via ${paymentMethod}. Your order has also been marked as collected.` }); }
+    catch (error) { console.error("Pickup payment email could not be sent:", error.message); }
+  }
   res.json({ success: true, data: updated, change: Number((input.amountTendered - total).toFixed(2)) });
 });
 

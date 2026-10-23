@@ -52,8 +52,8 @@ const ChangePassword = () => {
 
     try {
       setSubmitting(true);
-      await authService.changePassword({ current_password: formData.current_password, new_password: formData.new_password });
-      setSuccess(true);
+      const response = await authService.changePassword({ current_password: formData.current_password, new_password: formData.new_password });
+      setSuccess(response.message || 'Password changed successfully.');
       setFormData({ current_password: '', new_password: '', confirm_password: '' });
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
@@ -67,7 +67,7 @@ const ChangePassword = () => {
 
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
-          Password changed successfully!
+          {success}
         </div>
       )}
 

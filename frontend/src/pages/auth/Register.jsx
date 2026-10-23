@@ -1,178 +1,51 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { isValidEmail, isValidPassword } from '../../utils/validators';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import AuthShell from '../../components/auth/AuthShell';
 
-const Register = () => {
+export default function Register() {
   const navigate = useNavigate();
   const { register, loading } = useAuth();
   const { mergeGuestCart } = useCart();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    firstName: '',
-    lastName: '',
-  });
+  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', firstName: '', lastName: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
-    }
+  const change = event => { const { name, value } = event.target; setForm(current => ({ ...current, [name]: value })); setErrors(current => ({ ...current, [name]: '' })); };
+  const submit = async event => {
+    event.preventDefault(); setError(null);
+    const next = {};
+    if (!form.firstName.trim()) next.firstName = 'First name is required';
+    if (!form.lastName.trim()) next.lastName = 'Last name is required';
+    if (!isValidEmail(form.email)) next.email = 'Enter a valid email address';
+    if (!isValidPassword(form.password)) next.password = 'Password must be 12 to 72 characters';
+    if (form.password !== form.confirmPassword) next.confirmPassword = 'Passwords do not match';
+    setErrors(next); if (Object.keys(next).length) return;
+    const result = await register(form.email, form.password, form.firstName, form.lastName);
+    if (!result.success) return setError(result.error);
+    try { if (result.user?.id) await mergeGuestCart(result.user.id); }
+    catch (cartError) { console.warn('Account created successfully; guest cart merge was skipped:', cartError); }
+    navigate('/my-account');
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!isValidEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (!isValidPassword(formData.password)) {
-      newErrors.password = 'Password must be 12 to 72 characters';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!validateForm()) return;
-
-    const result = await register(
-      formData.email,
-      formData.password,
-      formData.firstName,
-      formData.lastName
-    );
-
-    if (result.success) {
-      try { if (result.user?.id) await mergeGuestCart(result.user.id); }
-      catch (cartError) { console.warn('Account created successfully; guest cart merge was skipped:', cartError); }
-      navigate('/my-account');
-    } else {
-      setError(result.error);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="text-3xl font-bold text-center text-gray-900">Create your account</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/auth/login" className="font-medium text-[#4c00b0] hover:text-[#4c00b0]">
-              Sign in
-            </Link>
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                name="firstName"
-                label="First Name"
-                type="text"
-                value={formData.firstName}
-                onChange={handleChange}
-                error={errors.firstName}
-                required
-                autoComplete="given-name"
-              />
-
-              <Input
-                name="lastName"
-                label="Last Name"
-                type="text"
-                value={formData.lastName}
-                onChange={handleChange}
-                error={errors.lastName}
-                required
-                autoComplete="family-name"
-              />
-            </div>
-
-            <Input
-              name="email"
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-              required
-              autoComplete="email"
-            />
-
-            <Input
-              name="password"
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              required
-              minLength={12}
-              maxLength={72}
-              autoComplete="new-password"
-            />
-
-            <Input
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              error={errors.confirmPassword}
-              required
-              autoComplete="new-password"
-            />
-          </div>
-
-          <Button type="submit" size="large" className="w-full" loading={loading}>
-            Create Account
-          </Button>
-        </form>
-
-        <div className="text-center">
-          <Link to="/shop" className="text-sm text-gray-600 hover:text-gray-900">
-            ← Back to shop
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Register;
+  return <AuthShell image="/hero/nairobi-fashion.jpg" imageAlt="Model wearing contemporary fashion in Nairobi" eyebrow="A LITTLE MORE YOU" title="Create your account">
+    <p className="auth-intro">Save your details and make every new look yours.</p>
+    <form className="auth-form auth-form-register" onSubmit={submit}>
+      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
+      <div className="auth-name-fields"><Input name="firstName" label="First name" value={form.firstName} onChange={change} error={errors.firstName} required autoComplete="given-name" /><Input name="lastName" label="Last name" value={form.lastName} onChange={change} error={errors.lastName} required autoComplete="family-name" /></div>
+      <Input name="email" label="Email address" type="email" value={form.email} onChange={change} error={errors.email} required autoComplete="email" />
+      <div className="auth-password-wrap"><Input name="password" label="Password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={change} error={errors.password} required minLength={12} maxLength={72} autoComplete="new-password" /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}<span>{showPassword ? 'Hide' : 'Show'}</span></button></div>
+      <div className="auth-password-wrap"><Input name="confirmPassword" label="Confirm password" type={showConfirm ? 'text' : 'password'} value={form.confirmPassword} onChange={change} error={errors.confirmPassword} required autoComplete="new-password" /><button type="button" className="auth-password-toggle" onClick={() => setShowConfirm(value => !value)} aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'} aria-pressed={showConfirm}>{showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}<span>{showConfirm ? 'Hide' : 'Show'}</span></button></div>
+      <p className="auth-password-hint">Use 12–72 characters for a stronger password.</p>
+      <Button type="submit" size="large" className="w-full" loading={loading}>Create account</Button>
+    </form>
+    <p className="auth-switch">Already have an account? <Link to="/auth/login">Sign in</Link></p>
+  </AuthShell>;
+}

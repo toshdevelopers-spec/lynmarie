@@ -5,9 +5,13 @@ const base = 'https://www.lynmarieboutique.com';
 const xml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
 export const sitemap = asyncHandler(async (_req, res) => {
+  const indexableProduct = {
+    status: 'PUBLISHED',
+    AND: [{ OR: [{ stockStatus: { not: 'OUT_OF_STOCK' } }, { backordersAllowed: true }] }],
+  };
   const [products, categories] = await Promise.all([
-    prisma.product.findMany({ where: { status: 'PUBLISHED' }, select: { slug: true, name: true, updatedAt: true, images: { select: { url: true, altText: true }, orderBy: { position: 'asc' } } }, orderBy: { updatedAt: 'desc' } }),
-    prisma.category.findMany({ where: { products: { some: { product: { status: 'PUBLISHED' } } } }, select: { slug: true, updatedAt: true } }),
+    prisma.product.findMany({ where: indexableProduct, select: { slug: true, name: true, updatedAt: true, images: { select: { url: true, altText: true }, orderBy: { position: 'asc' } } }, orderBy: { updatedAt: 'desc' } }),
+    prisma.category.findMany({ where: { products: { some: { product: indexableProduct } } }, select: { slug: true, updatedAt: true } }),
   ]);
   const pages = ['/', '/shop', '/collections', '/contact', '/shipping', '/returns', '/size-guide', '/faq', '/privacy', '/terms'];
   const entries = [

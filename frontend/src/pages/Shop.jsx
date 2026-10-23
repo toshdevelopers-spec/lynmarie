@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useParams, Link } from 'react-router-dom';
 import { useProducts } from '../hooks/useProducts';
 import ProductCard from '../components/ProductCard';
 import Loader from '../components/ui/Loader';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { Filter, Grid3X3, List } from 'lucide-react';
 import { setPageSeo } from '../utils/pageSeo';
+import { categorySeoFor } from '../utils/categorySeo';
+import { useGetCategoriesQuery } from '../services/storefrontApi';
 
 const Shop = () => {
   const colorOptions = ['Beige', 'Black', 'Black and ivory', 'Black and pink', 'Black and white', 'Black, white and multicolour', 'Blue and black', 'Blue and multicolour', 'Blue and white', 'Blush pink', 'Blush pink and floral', 'Brown', 'Brown and black', 'Brown and cream', 'Burgundy', 'Champagne', 'Charcoal and blue', 'Charcoal and grey', 'Charcoal grey', 'Chocolate brown', 'Cobalt blue', 'Coral', 'Cream and multicolour', 'Cream and taupe', 'Emerald green', 'Fuchsia', 'Fuchsia pink', 'Gold', 'Green', 'Green and black', 'Grey', 'Hot pink', 'Ivory', 'Ivory and blue', 'Jade green', 'Lavender', 'Lilac', 'Mauve', 'Mint green', 'Mocha brown', 'Multicolour', 'Navy', 'Navy and black', 'Navy and multicolour', 'Navy and white', 'Navy blue', 'Olive and cream', 'Orange', 'Pale pink', 'Pink', 'Pink and black', 'Pink and gold', 'Pink and multicolour', 'Pink, yellow and blue', 'Powder blue', 'Purple', 'Purple and pink', 'Red', 'Red and black', 'Red and navy', 'Sage green', 'Slate grey', 'Taupe', 'Taupe and cream', 'Teal', 'Teal and cream', 'Teal and green', 'Teal and white', 'Teal blue', 'Turquoise', 'White', 'White and black', 'White and blue', 'White and orange', 'White and pastel', 'Wine red', 'Yellow and blue', 'Yellow and navy', 'Yellow and white'];
@@ -19,6 +21,7 @@ const Shop = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [color, setColor] = useState(searchParams.get('color') || '');
+  const { data: categories = [] } = useGetCategoriesQuery();
 
   const params = { limit: 100, sort };
   if (categorySlug) params.category = categorySlug;
@@ -31,12 +34,13 @@ const Shop = () => {
   const clearFilters = () => { setMinPrice(''); setMaxPrice(''); setColor(''); setSort('date_desc'); if (onSale || searchParams.has('color')) { const next = new URLSearchParams(searchParams); next.delete('on_sale'); next.delete('color'); setSearchParams(next); } };
 
   const { products, loading, error } = useProducts(params);
-  const categoryName = categorySlug ? categorySlug.replace(/-/g, ' ') : '';
+  const categoryName = categories.find(category => category.slug === categorySlug)?.name || (categorySlug ? categorySlug.replace(/-/g, ' ') : '');
+  const categorySeo = useMemo(() => categorySlug ? categorySeoFor(categorySlug, categoryName) : null, [categorySlug, categoryName]);
   useEffect(() => {
-    const title = search ? `Search women's clothing | LynMarie Boutique` : onSale ? `Sale on Women's Clothes in Kenya | LynMarie Boutique` : categoryName ? `${categoryName.replace(/\b\w/g, letter => letter.toUpperCase())} in Kenya | LynMarie Boutique` : `Shop Imported Women's Clothing in Kenya | LynMarie Boutique`;
-    const description = search ? `Browse LynMarie Boutique results for ${search}. Explore imported women's dresses, jumpsuits, suits and fashion in Kenya.` : onSale ? `Shop sale styles at LynMarie Boutique in Nairobi. Find imported women's dresses, outfits and occasionwear at reduced prices while available.` : categoryName ? `Shop ${categoryName} for women at LynMarie Boutique. Browse imported styles online in Kenya, see current colours, sizes and prices, and choose delivery or Nairobi shop collection.` : `Shop imported women's clothes online in Kenya at LynMarie Boutique. Explore dresses, jumpsuits, trouser suits, tops and occasionwear at great prices.`;
+    const title = search ? `Search women's clothing | LynMarie Boutique` : onSale ? `Sale on Women's Clothes in Kenya | LynMarie Boutique` : categorySeo?.title || `Shop Imported Women's Clothing in Kenya | LynMarie Boutique`;
+    const description = search ? `Browse LynMarie Boutique results for ${search}. Explore imported women's dresses, jumpsuits, suits and fashion in Kenya.` : onSale ? `Shop sale styles at LynMarie Boutique in Nairobi. Find imported women's dresses, outfits and occasionwear at reduced prices while available.` : categorySeo?.description || `Shop imported women's clothes online in Kenya at LynMarie Boutique. Explore dresses, jumpsuits, trouser suits, tops and occasionwear at great prices.`;
     return setPageSeo({ title, description, path: categorySlug ? `/category/${categorySlug}` : '/shop', robots: search || onSale ? 'noindex,follow' : undefined });
-  }, [categorySlug, categoryName, search, onSale]);
+  }, [categorySlug, categorySeo, search, onSale]);
 
   return (
     <div className="min-h-screen py-8 bg-purple-50">
@@ -45,12 +49,13 @@ const Shop = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-serif font-bold text-purple-950 mb-2 tracking-wide">
-              {search ? `Results for “${search}”` : onSale ? 'The Sale Edit' : categorySlug ? categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1).replace(/-/g, ' ') : 'Imported Women’s Clothing in Kenya'}
+              {search ? `Results for “${search}”` : onSale ? 'The Sale Edit' : categorySeo?.heading || 'Imported Women’s Clothing in Kenya'}
             </h1>
             <p className="text-gray-600 font-sans font-light tracking-wide">
               {loading ? 'Finding your next favourite...' : `${products.length} ${products.length === 1 ? 'style' : 'styles'}${search ? ` found for “${search}”` : ' available to explore'}`}
             </p>
-            {!search && <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">Explore imported women’s fashion in Kenya, from elegant dresses and wedding guest outfits to jumpsuits, ladies’ trouser suits and everyday tops. Compare current prices, sizes and colours, then shop online or collect from our Nairobi boutique.</p>}
+            {!search && <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">{categorySeo?.intro || 'Explore imported women’s fashion in Kenya, from elegant dresses and wedding guest outfits to jumpsuits, ladies’ trouser suits and everyday tops. Compare current prices, sizes and colours, then shop online or collect from our Nairobi boutique.'}</p>}
+            {!search && categorySeo?.related?.length > 0 && <nav aria-label="Related clothing collections" className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">{categorySeo.related.map(item => <Link key={item.slug} to={`/category/${item.slug}`} className="text-purple-800 underline underline-offset-4">{item.label}</Link>)}</nav>}
           </div>
           
           <div className="flex items-center gap-4 mt-4 md:mt-0">

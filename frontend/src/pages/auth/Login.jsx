@@ -1,132 +1,40 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import AuthShell from '../../components/auth/AuthShell';
 
-const Login = () => {
+export default function Login() {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
   const { mergeGuestCart } = useCart();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState({});
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
-    }
+  const handleSubmit = async event => {
+    event.preventDefault(); setError(null);
+    const result = await login(email, password);
+    if (!result.success) return setError(result.error);
+    try { if (result.user?.id) await mergeGuestCart(result.user.id); }
+    catch (cartError) { console.warn('Signed in successfully; guest cart merge was skipped:', cartError); }
+    navigate('/my-account');
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username or email is required';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!validateForm()) return;
-
-    const result = await login(formData.username, formData.password);
-    if (result.success) {
-      try { if (result.user?.id) await mergeGuestCart(result.user.id); }
-      catch (cartError) { console.warn('Signed in successfully; guest cart merge was skipped:', cartError); }
-      navigate('/my-account');
-    } else {
-      setError(result.error);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="text-3xl font-bold text-center text-gray-900">Sign in to your account</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/auth/register" className="font-medium text-[#4c00b0] hover:text-[#4c00b0]">
-              create a new account
-            </Link>
-          </p>
-        </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
-
-          <div className="space-y-4">
-            <Input
-              name="username"
-              label="Username or Email"
-              type="text"
-              value={formData.username}
-              onChange={handleChange}
-              error={errors.username}
-              required
-              autoComplete="username"
-            />
-
-            <Input
-              name="password"
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-purple-700 focus:ring-[#4c00b0] border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Remember me
-              </label>
-            </div>
-
-            <div className="text-sm">
-              <Link to="/auth/forgot-password" className="font-medium text-[#4c00b0] hover:text-[#4c00b0]">
-                Forgot your password?
-              </Link>
-            </div>
-          </div>
-
-          <Button type="submit" size="large" className="w-full" loading={loading}>
-            Sign in
-          </Button>
-        </form>
-
-        <div className="text-center">
-          <Link to="/shop" className="text-sm text-gray-600 hover:text-gray-900">
-            ← Back to shop
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default Login;
+  return <AuthShell image="/hero/occasion.webp" imageAlt="Model in an elegant occasion dress" eyebrow="WELCOME BACK" title="Sign in to your account">
+    <p className="auth-intro">Your favourite looks are waiting for you.</p>
+    <form className="auth-form" onSubmit={handleSubmit}>
+      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
+      <Input name="email" label="Email address" type="email" value={email} onChange={event => setEmail(event.target.value)} required autoComplete="username" />
+      <div className="auth-password-wrap"><Input name="password" label="Password" type={showPassword ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)} required autoComplete="current-password" /><button type="button" className="auth-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}<span>{showPassword ? 'Hide' : 'Show'}</span></button></div>
+      <div className="auth-options"><label><input type="checkbox" /> Remember me</label><Link to="/auth/forgot-password">Forgot password?</Link></div>
+      <Button type="submit" size="large" className="w-full" loading={loading}>Sign in</Button>
+    </form>
+    <p className="auth-switch">New to Lyn Marie? <Link to="/auth/register">Create an account</Link></p>
+  </AuthShell>;
+}

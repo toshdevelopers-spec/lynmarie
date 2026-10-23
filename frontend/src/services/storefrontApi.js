@@ -25,6 +25,11 @@ export const storefrontApi = createApi({
       query: params => ({ url: '/products', params }),
       transformResponse: response => response.data ?? [],
     }),
+    getNewArrivals: builder.query({
+      query: () => ({ url: '/new-arrivals' }),
+      transformResponse: response => response.data ?? [],
+      keepUnusedDataFor: 60,
+    }),
     getProduct: builder.query({
       query: id => ({ url: `/products/${id}` }),
       transformResponse: response => response.data,
@@ -42,6 +47,7 @@ export const storefrontApi = createApi({
 
 export const {
   useGetProductsQuery,
+  useGetNewArrivalsQuery,
   useGetProductQuery,
   useGetCategoriesQuery,
   useGetReviewsQuery,

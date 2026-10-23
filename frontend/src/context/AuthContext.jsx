@@ -153,6 +153,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changePassword = async data => {
+    try {
+      setLoading(true);
+      const response = await authService.changePassword(data);
+      return { success: true, emailSent: response.emailSent, message: response.message };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Password change failed';
+      return { success: false, error: message };
+    } finally { setLoading(false); }
+  };
+
   const value = {
     user,
     loading,
@@ -164,6 +175,7 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     forgotPassword,
     resetPassword,
+    changePassword,
     refreshAuth: checkAuthStatus,
   };
 

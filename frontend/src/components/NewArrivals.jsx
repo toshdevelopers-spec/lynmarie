@@ -1,25 +1,11 @@
 import { Link } from 'react-router-dom';
 import { hideBrokenProductImage, isRepresentativeProductImage } from '../utils/images';
-import { useGetProductsQuery } from '../services/storefrontApi';
+import { useGetNewArrivalsQuery } from '../services/storefrontApi';
 import Loader from './ui/Loader';
 import ErrorMessage from './ui/ErrorMessage';
 
 const NewArrivals = () => {
-  const office = useGetProductsQuery({
-    category: 'office-wear',
-    per_page: 4,
-    orderby: 'date',
-    order: 'desc',
-  });
-  const dinner = useGetProductsQuery({
-    category: 'evening-dinner-dresses',
-    per_page: 4,
-    orderby: 'date',
-    order: 'desc',
-  });
-  const products = [...(office.data || []), ...(dinner.data || [])];
-  const loading = office.isLoading || dinner.isLoading;
-  const error = office.isError || dinner.isError;
+  const { data: products = [], isLoading: loading, isError: error } = useGetNewArrivalsQuery();
 
   if (loading) {
     return (

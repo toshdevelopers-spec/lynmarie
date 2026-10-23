@@ -3,6 +3,7 @@ import { prisma } from "../config/prisma.js";
 import { asyncHandler } from "../middleware/errors.js";
 import bcrypt from "bcryptjs";
 import { passwordSchema } from "../utils/security.js";
+import { sendPasswordChangedEmail } from "../utils/email.js";
 export const updateMe = asyncHandler(async (req, res) => {
   const body = z.object({ first_name: z.string().trim().min(1).optional(), last_name: z.string().trim().min(1).optional(), phone: z.string().optional() }).parse(req.body);
   const user = await prisma.user.update({ where: { id: req.user.id }, data: { firstName: body.first_name, lastName: body.last_name, phone: body.phone } });
@@ -22,6 +23,9 @@ export const saveAddress = asyncHandler(async (req, res) => {
 export const changePassword = asyncHandler(async (req, res) => {
   const input = z.object({ current_password: z.string().min(1).max(200), new_password: passwordSchema }).parse(req.body);
   if (!req.user.passwordHash || !(await bcrypt.compare(input.current_password, req.user.passwordHash))) return res.status(400).json({ success: false, message: "Current password is incorrect" });
-  await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash: await bcrypt.hash(input.new_password, 12) } });
-  res.json({ success: true, message: "Password changed successfully" });
+  const user = await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash: await bcrypt.hash(input.new_password, 12) } });
+  let emailSent = true;
+  try { await sendPasswordChangedEmail(user); }
+  catch (error) { emailSent = false; console.error("Password change notification could not be sent:", error.message); }
+  res.json({ success: true, emailSent, message: emailSent ? "Password changed. A confirmation email has been sent." : "Password changed, but the confirmation email could not be sent. Please contact the store if this was unexpected." });
 });

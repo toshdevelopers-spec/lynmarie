@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 
 const Profile = () => {
-  const { user, updateProfile, loading } = useAuth();
+  const { user, updateProfile, changePassword, loading } = useAuth();
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -15,6 +16,10 @@ const Profile = () => {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordNotice, setPasswordNotice] = useState(null);
+  const [showPasswords, setShowPasswords] = useState(false);
 
   // Initialize form data from user data
   const initialFormData = useMemo(() => ({
@@ -57,6 +62,14 @@ const Profile = () => {
     } else {
       setError(result.error);
     }
+  };
+
+  const handlePasswordSubmit = async event => {
+    event.preventDefault(); setPasswordError(null); setPasswordNotice(null);
+    if (passwordForm.new_password !== passwordForm.confirm_password) return setPasswordError('New passwords do not match.');
+    const result = await changePassword({ current_password: passwordForm.current_password, new_password: passwordForm.new_password });
+    if (result.success) { setPasswordNotice(result.message); setPasswordForm({ current_password: '', new_password: '', confirm_password: '' }); }
+    else setPasswordError(result.error || 'Could not change your password.');
   };
 
   return (
@@ -120,6 +133,17 @@ const Profile = () => {
           </Button>
         </div>
       </form>
+
+      <section className="profile-password-section">
+        <h3 className="text-xl font-semibold text-gray-900">Change password</h3>
+        <p className="mb-5 text-sm text-gray-600">We’ll email you a confirmation after your password changes.</p>
+        {passwordNotice && <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{passwordNotice}</p>}
+        {passwordError && <ErrorMessage message={passwordError} onDismiss={() => setPasswordError(null)} />}
+        <form className="space-y-4" onSubmit={handlePasswordSubmit}>
+          {['current_password', 'new_password', 'confirm_password'].map((name, index) => <div className="auth-password-wrap" key={name}><Input name={name} label={['Current password', 'New password', 'Confirm new password'][index]} type={showPasswords ? 'text' : 'password'} value={passwordForm[name]} onChange={event => setPasswordForm(current => ({ ...current, [name]: event.target.value }))} required minLength={index ? 12 : undefined} maxLength={72} autoComplete={index ? 'new-password' : 'current-password'} />{index === 1 && <button type="button" className="auth-password-toggle" onClick={() => setShowPasswords(value => !value)} aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}>{showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}<span>{showPasswords ? 'Hide' : 'Show'}</span></button>}</div>)}
+          <div className="flex justify-end"><Button type="submit" loading={loading}>Update password</Button></div>
+        </form>
+      </section>
     </div>
   );
 };

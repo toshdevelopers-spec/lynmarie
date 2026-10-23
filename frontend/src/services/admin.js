@@ -13,6 +13,8 @@ export const adminService = {
   dashboard: () => request('get', '/admin/dashboard'),
   cartActivity: () => request('get', '/admin/cart-activity'),
   products: () => request('get', '/admin/products'),
+  newArrivals: () => request('get', '/admin/new-arrivals'),
+  saveNewArrivals: ids => request('put', '/admin/new-arrivals', { ids }),
   uploadProductImage: async file => {
     if (!file.type.startsWith('image/')) throw new Error(`${file.name} is not an image`);
     if (file.size > 20 * 1024 * 1024) throw new Error(`${file.name} exceeds the 20 MB upload limit`);
