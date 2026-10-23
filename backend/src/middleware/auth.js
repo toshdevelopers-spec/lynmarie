@@ -26,6 +26,9 @@ export async function optionalAuth(req, res, next) {
 }
 
 export const requireRole = (...roles) => (req, res, next) => {
-  if (!req.user || !roles.includes(req.user.role)) return res.status(403).json({ success: false, message: "Forbidden" });
+  if (!req.user?.role) return res.status(403).json({ success: false, message: "Forbidden" });
+  const userRole = String(req.user.role).toUpperCase();
+  const allowed = roles.map(r => String(r).toUpperCase());
+  if (!allowed.includes(userRole)) return res.status(403).json({ success: false, message: "Forbidden" });
   next();
 };

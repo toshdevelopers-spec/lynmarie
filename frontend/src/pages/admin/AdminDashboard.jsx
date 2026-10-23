@@ -65,7 +65,7 @@ export default function AdminDashboard() {
         const [rows, people] = await Promise.all([adminService.orders(), requestedSection === 'orders' ? adminService.customers() : Promise.resolve([])]);
         nextPaymentCount = rows.filter(canReviewPayment).length;
         nextData = { rows };
-        if (requestedSection === 'orders') nextStaff = people.filter(person => person.role === 'SELLER' && person.isActive);
+        if (requestedSection === 'orders') nextStaff = people.filter(person => ['SELLER', 'ADMIN'].includes(person.role) && person.isActive);
       }
       else if (requestedSection === 'reviews') nextData = { rows: await adminService.reviews() };
       else if (requestedSection === 'inquiries') nextData = { rows: await adminService.inquiries() };

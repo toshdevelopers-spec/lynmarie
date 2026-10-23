@@ -17,11 +17,13 @@ const inventory = asyncHandler(async (req, res) => {
 const sales = asyncHandler(async (req, res) => {
   const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (Number.isNaN(from.getTime())) return res.status(400).json({ success: false, message: "Invalid sales date" });
-  const sellerFilter = req.user.role === "ADMIN" ? {} : { sellerId: req.user.id };
+  const userRole = String(req.user.role || "").toUpperCase();
+  const sellerFilter = userRole === "ADMIN" ? {} : { sellerId: req.user.id };
+  const deliveryFilter = userRole === "ADMIN" ? {} : { OR: [{ deliveryRiderId: req.user.id }, { deliveryRiderId: null }] };
   const [rows, pickupOrders, deliveryOrders] = await Promise.all([
     prisma.order.findMany({ where: { orderType: "POS", createdAt: { gte: from }, ...sellerFilter }, include: { items: true, seller: { select: { id: true, firstName: true, lastName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.order.findMany({ where: { fulfillmentMethod: "PICKUP", pickedUpAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true }, orderBy: { createdAt: "asc" }, take: 100 }),
-    prisma.order.findMany({ where: { fulfillmentMethod: "DELIVERY", paymentMethod: "cod", paymentStatus: "PENDING", deliveryRiderId: req.user.role === "ADMIN" ? { not: null } : req.user.id, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true, deliveryRider: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
+    prisma.order.findMany({ where: { fulfillmentMethod: "DELIVERY", paymentMethod: "cod", paymentStatus: "PENDING", ...deliveryFilter, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true, deliveryRider: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
   ]);
   res.json({ success: true, data: { sales: rows, pickupOrders, deliveryOrders } });
 });
@@ -129,11 +131,46 @@ const confirmDeliveryPayment = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const { amountReceived } = z.object({ amountReceived: z.coerce.number().positive() }).parse(req.body);
   const order = await prisma.order.findUniqueOrThrow({ where: { id } });
-  if (order.fulfillmentMethod !== "DELIVERY" || order.paymentMethod !== "cod" || order.paymentStatus !== "PENDING" || order.deliveryRiderId !== req.user.id || order.deliveryPaymentConfirmedAt || ["CANCELLED", "REFUNDED"].includes(order.status)) return res.status(409).json({ success: false, message: "This cash-on-delivery order is not assigned to you or is no longer payable" });
-  if (Number(amountReceived) !== Number(order.total)) return res.status(400).json({ success: false, message: "Amount received must match the order total" });
-  const changed = await prisma.order.updateMany({ where: { id, deliveryRiderId: req.user.id, paymentStatus: "PENDING", deliveryPaymentConfirmedAt: null }, data: { deliveryPaymentAmount: amountReceived, deliveryPaymentConfirmedAt: new Date(), deliveryPaymentConfirmedById: req.user.id, amountTendered: amountReceived } });
+  const userRole = String(req.user.role || "").toUpperCase();
+  const canConfirm = userRole === "ADMIN" || userRole === "SELLER" || order.deliveryRiderId === req.user.id;
+  if (order.fulfillmentMethod !== "DELIVERY" || order.paymentMethod !== "cod" || order.paymentStatus !== "PENDING" || !canConfirm || order.deliveryPaymentConfirmedAt || ["CANCELLED", "REFUNDED"].includes(order.status)) {
+    return res.status(409).json({ success: false, message: "This cash-on-delivery order is not assigned to you or is no longer payable" });
+  }
+  if (Number(amountReceived) !== Number(order.total)) {
+    return res.status(400).json({ success: false, message: "Amount received must match the order total" });
+  }
+  const changed = await prisma.order.updateMany({
+    where: {
+      id,
+      paymentStatus: "PENDING",
+      deliveryPaymentConfirmedAt: null,
+      status: { notIn: ["CANCELLED", "REFUNDED"] },
+    },
+    data: {
+      deliveryPaymentAmount: amountReceived,
+      deliveryPaymentConfirmedAt: new Date(),
+      deliveryPaymentConfirmedById: req.user.id,
+      amountTendered: amountReceived,
+      ...(order.deliveryRiderId ? {} : { deliveryRiderId: req.user.id }),
+    },
+  });
   if (!changed.count) return res.status(409).json({ success: false, message: "Payment receipt was already recorded" });
-  res.json({ success: true, data: await prisma.order.findUnique({ where: { id }, include: { items: true } }), message: "Cash receipt recorded. An administrator must approve the payment." });
+
+  const updated = await prisma.order.findUnique({
+    where: { id },
+    include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+  });
+
+  try {
+    await sendOrderUpdateEmail(updated, {
+      kind: "payment",
+      message: `We have received your cash-on-delivery payment of KES ${Number(order.total).toLocaleString("en-KE", { minimumFractionDigits: 2 })}. Your payment has been recorded and submitted for administrator verification.`,
+    });
+  } catch (error) {
+    console.error("Delivery payment confirmation email could not be sent:", error.message);
+  }
+
+  res.json({ success: true, data: updated, message: "Cash receipt recorded. An administrator must approve the payment." });
 });
 
 export { inventory, sales, checkoutSale, collectPickupOrder, confirmDeliveryPayment };

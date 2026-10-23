@@ -198,8 +198,8 @@ export const orders = asyncHandler(async (req, res) => res.json({ success: true,
 export const assignDeliveryRider = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const { riderId } = z.object({ riderId: z.coerce.number().int().positive().nullable() }).parse(req.body);
-  const rider = riderId ? await prisma.user.findFirst({ where: { id: riderId, role: "SELLER", isActive: true } }) : null;
-  if (riderId && !rider) return res.status(400).json({ success: false, message: "Choose an active seller account as the delivery rider" });
+  const rider = riderId ? await prisma.user.findFirst({ where: { id: riderId, role: { in: ["SELLER", "ADMIN"] }, isActive: true } }) : null;
+  if (riderId && !rider) return res.status(400).json({ success: false, message: "Choose an active staff account as the delivery rider" });
   const order = await prisma.order.findUniqueOrThrow({ where: { id } });
   if (order.fulfillmentMethod !== "DELIVERY" || order.paymentMethod !== "cod" || order.paymentStatus === "PAID") return res.status(409).json({ success: false, message: "Riders can only be assigned to unpaid cash-on-delivery orders" });
   res.json({ success: true, data: await prisma.order.update({ where: { id }, data: { deliveryRiderId: riderId } }) });
@@ -221,7 +221,7 @@ export const reviewOrderPayment = asyncHandler(async (req, res) => {
   const reviewNote = note || (decision === "APPROVE" ? `Payment recorded by administrator as ${method.toUpperCase()}${reference ? ` · receipt ${reference}` : ""}` : null);
   const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] }, status: { notIn: ["COMPLETED", "CANCELLED", "REFUNDED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? total : 0, amountTendered: decision === "APPROVE" ? received : order.amountTendered, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: reviewNote, ...(decision === "APPROVE" ? { paymentMethod: method, paymentReference: reference || null, paymentMessage: message || null, status: "PROCESSING" } : {}) } });
   if (!changed.count) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
-  const row = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+  const row = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } } } });
   const { sendOrderUpdateEmail } = await import("../utils/email.js");
   try { await sendOrderUpdateEmail(row, { kind: "payment", message: decision === "APPROVE" ? `Your payment of KES ${Number(order.total).toLocaleString("en-KE", { minimumFractionDigits: 2 })} has been verified and approved.` : `We could not approve the payment yet. ${note}` }); } catch (error) { console.error("Payment review email could not be sent:", error.message); }
   res.json({ success: true, data: row });

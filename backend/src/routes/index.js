@@ -78,7 +78,7 @@ router.get("/pos/inventory", ...posOnly, pos.inventory);
 router.get("/pos/sales", ...posOnly, pos.sales);
 router.post("/pos/sales", ...posOnly, pos.checkoutSale);
 router.post("/pos/pickups/:id/collect", ...posOnly, pos.collectPickupOrder);
-router.post("/pos/deliveries/:id/payment-received", protect, requireRole("SELLER"), pos.confirmDeliveryPayment);
+router.post("/pos/deliveries/:id/payment-received", ...posOnly, pos.confirmDeliveryPayment);
 router.get("/admin/cart-activity", ...adminOnly, admin.cartActivity);
 router.post("/admin/product-image-signature", ...adminOnly, admin.productImageSignature);
 router.get("/admin/products", ...adminOnly, admin.products);

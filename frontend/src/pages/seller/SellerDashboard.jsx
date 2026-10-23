@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Banknote, Barcode, Check, CreditCard, Minus, Package, Plus, Printer, RefreshCw, Search, ShoppingCart, Store, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Banknote, Barcode, CreditCard, Minus, Package, Plus, Printer, RefreshCw, Search, ShoppingCart, Store, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { adminService } from '../../services/admin';
 import Loader from '../../components/ui/Loader';
