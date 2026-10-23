@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { isValidPassword } from '../../utils/validators';
 import Input from '../../components/ui/Input';
@@ -17,6 +18,7 @@ const ChangePassword = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -85,21 +87,26 @@ const ChangePassword = () => {
           autoComplete="current-password"
         />
 
-        <Input
-          name="new_password"
-          label="New Password"
-          type="password"
-          value={formData.new_password}
-          onChange={handleChange}
-          error={errors.new_password}
-          required
-          autoComplete="new-password"
-        />
+        <div className="auth-password-wrap">
+          <Input
+            name="new_password"
+            label="New Password"
+            type={showNewPassword ? 'text' : 'password'}
+            value={formData.new_password}
+            onChange={handleChange}
+            error={errors.new_password}
+            required
+            autoComplete="new-password"
+          />
+          <button type="button" className="auth-password-toggle" onClick={() => setShowNewPassword(value => !value)} aria-label={showNewPassword ? 'Hide new password' : 'Show new password'} aria-pressed={showNewPassword}>
+            {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}<span>{showNewPassword ? 'Hide' : 'Show'}</span>
+          </button>
+        </div>
 
         <Input
           name="confirm_password"
           label="Confirm New Password"
-          type="password"
+          type={showNewPassword ? 'text' : 'password'}
           value={formData.confirm_password}
           onChange={handleChange}
           error={errors.confirm_password}
