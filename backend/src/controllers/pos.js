@@ -21,7 +21,7 @@ const sales = asyncHandler(async (req, res) => {
   const [rows, pickupOrders, deliveryOrders] = await Promise.all([
     prisma.order.findMany({ where: { orderType: "POS", createdAt: { gte: from }, ...sellerFilter }, include: { items: true, seller: { select: { id: true, firstName: true, lastName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.order.findMany({ where: { fulfillmentMethod: "PICKUP", pickedUpAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true }, orderBy: { createdAt: "asc" }, take: 100 }),
-    prisma.order.findMany({ where: { fulfillmentMethod: "DELIVERY", paymentMethod: "cod", paymentStatus: "PENDING", deliveryRiderId: req.user.role === "ADMIN" ? { not: null } : req.user.id, deliveryPaymentConfirmedAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true, deliveryRider: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
+    prisma.order.findMany({ where: { fulfillmentMethod: "DELIVERY", paymentMethod: "cod", paymentStatus: "PENDING", deliveryRiderId: req.user.role === "ADMIN" ? { not: null } : req.user.id, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true, deliveryRider: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
   ]);
   res.json({ success: true, data: { sales: rows, pickupOrders, deliveryOrders } });
 });
