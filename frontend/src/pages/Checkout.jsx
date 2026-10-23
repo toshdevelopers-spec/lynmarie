@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import { checkoutService } from '../services/checkout';
 import { hideBrokenProductImage } from '../utils/images';
+import { authService } from '../services/auth';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -40,6 +41,19 @@ const Checkout = () => {
     fulfillment_method: 'DELIVERY',
   });
   const [sameAsBilling, setSameAsBilling] = useState(true);
+  const [editingSavedDetails, setEditingSavedDetails] = useState(!user);
+  const [paymentMessage, setPaymentMessage] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    authService.getAddresses().then(addresses => {
+      if (!active) return;
+      const saved = addresses.shipping || {};
+      setFormData(current => ({ ...current, billing_phone: user.phone || saved.phone || current.billing_phone, billing_address_1: saved.address_1 || current.billing_address_1, billing_city: saved.city || current.billing_city, billing_county: saved.state || current.billing_county, shipping_address_1: saved.address_1 || current.shipping_address_1, shipping_city: saved.city || current.shipping_city, shipping_county: saved.state || current.shipping_county }));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,6 +97,7 @@ const Checkout = () => {
         notes: formData.order_notes,
         payment_method: formData.payment_method,
         payment_reference: formData.payment_reference,
+        payment_message: paymentMessage,
         fulfillment_method: formData.fulfillment_method,
       });
       await clearCart();
@@ -119,6 +134,7 @@ const Checkout = () => {
             {/* Billing Details */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Billing Details</h2>
+              {user && <div className="mb-4 flex items-center justify-between rounded-lg bg-purple-50 p-3 text-sm"><span>Saved customer details are filled in automatically. Your name and email are account details.</span><button type="button" className="font-semibold text-purple-800 underline" onClick={() => setEditingSavedDetails(value => !value)}>{editingSavedDetails ? 'Use saved details' : 'Edit saved details'}</button></div>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   name="billing_first_name"
@@ -126,6 +142,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_first_name}
                   onChange={handleChange}
+                  readOnly={!!user}
                   required
                 />
                 <Input
@@ -134,6 +151,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_last_name}
                   onChange={handleChange}
+                  readOnly={!!user}
                   required
                 />
                 <Input
@@ -142,6 +160,7 @@ const Checkout = () => {
                   type="email"
                   value={formData.billing_email}
                   onChange={handleChange}
+                  readOnly={!!user}
                   required
                 />
                 <Input
@@ -150,6 +169,7 @@ const Checkout = () => {
                   type="tel"
                   value={formData.billing_phone}
                   onChange={handleChange}
+                  readOnly={!!user && !editingSavedDetails}
                   required
                 />
                 <Input
@@ -158,6 +178,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_address_1}
                   onChange={handleChange}
+                  readOnly={!!user && !editingSavedDetails}
                   required={formData.fulfillment_method === 'DELIVERY'}
                   className="md:col-span-2"
                 />
@@ -167,6 +188,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_city}
                   onChange={handleChange}
+                  readOnly={!!user && !editingSavedDetails}
                   required={formData.fulfillment_method === 'DELIVERY'}
                 />
                 <Input
@@ -175,6 +197,7 @@ const Checkout = () => {
                   type="text"
                   value={formData.billing_county}
                   onChange={handleChange}
+                  readOnly={!!user && !editingSavedDetails}
                 />
                 <Input
                   name="billing_country"
@@ -240,6 +263,7 @@ const Checkout = () => {
                     type="text"
                     value={formData.shipping_address_1}
                     onChange={handleChange}
+                    readOnly={!!user && !editingSavedDetails}
                     required
                     className="md:col-span-2"
                   />
@@ -249,6 +273,7 @@ const Checkout = () => {
                     type="text"
                     value={formData.shipping_city}
                     onChange={handleChange}
+                    readOnly={!!user && !editingSavedDetails}
                     required
                   />
                   <Input
@@ -372,7 +397,9 @@ const Checkout = () => {
                     <p className="font-semibold">Pay by M-Pesa before {formData.fulfillment_method === 'PICKUP' ? 'collection' : 'delivery'}</p>
                     <p className="mt-1">Paybill: <span className="font-medium">400200</span></p>
                     <p>Account number: <span className="font-medium">851561</span></p>
-                    <Input name="payment_reference" label="M-Pesa code (if already paid)" value={formData.payment_reference} onChange={handleChange} placeholder="e.g. QWE123ABC" />
+                    <Input name="payment_reference" label="M-Pesa receipt code" value={formData.payment_reference} onChange={handleChange} placeholder="e.g. QWE123ABC" required />
+                    <label className="mt-3 block text-sm font-medium text-gray-700">Paste the full M-Pesa confirmation message<textarea className="mt-1 min-h-28 w-full rounded-lg border border-gray-300 p-3 focus:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200" value={paymentMessage} onChange={event => setPaymentMessage(event.target.value)} maxLength={5000} required placeholder="Paste the complete SMS, including the receipt code, amount, date and recipient." /></label>
+                    <p className="mt-1 text-xs text-gray-600">An administrator will review the receipt code and full message before approving this payment.</p>
                   </div>
                 )}
                 {formData.payment_method === 'pay_on_pickup' && <p className="mt-3 rounded-lg bg-amber-50 p-4 text-sm text-gray-800">Your items will be reserved for shop collection. The seller will record your payment when you arrive.</p>}

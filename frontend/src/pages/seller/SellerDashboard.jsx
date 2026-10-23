@@ -16,6 +16,7 @@ export default function SellerDashboard() {
   const [inventory, setInventory] = useState([]);
   const [sales, setSales] = useState([]);
   const [pickupOrders, setPickupOrders] = useState([]);
+  const [deliveryOrders, setDeliveryOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +49,7 @@ export default function SellerDashboard() {
       setInventory(stock);
       setSales(from.sales || []);
       setPickupOrders(from.pickupOrders || []);
+      setDeliveryOrders(from.deliveryOrders || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Could not load shop inventory.');
     } finally {
@@ -141,6 +143,13 @@ export default function SellerDashboard() {
     } finally { setBusy(false); }
   };
 
+  const confirmDeliveryCash = async order => {
+    setBusy(true); setError('');
+    try { await adminService.confirmDeliveryPayment(order.id, Number(order.total)); setNotice('Cash receipt recorded. An administrator will approve the payment.'); await refresh(); }
+    catch (err) { setError(err.response?.data?.message || err.message || 'Could not record cash receipt.'); }
+    finally { setBusy(false); }
+  };
+
   const printReceipt = () => window.print();
   const changeFor = order => Math.max(0, Number(order.amountTendered || order.amountPaid || 0) - Number(order.total || 0));
 
@@ -193,8 +202,8 @@ export default function SellerDashboard() {
         </section>
       </div>
 
-      <section className="pos-activity-panel"><div className="pos-activity-heading"><div><h2>Shop activity</h2><p>Sales and customer orders for collection at the shop.</p></div><div className="pos-tabs"><button className={activityTab === 'sales' ? 'selected' : ''} onClick={() => setActivityTab('sales')}>Today’s sales</button><button className={activityTab === 'pickups' ? 'selected' : ''} onClick={() => setActivityTab('pickups')}>Shop pickups <span>{pickupOrders.length}</span></button></div></div>
-        {activityTab === 'sales' ? sales.length ? <div className="pos-table-wrap"><table><thead><tr><th>Receipt</th><th>Time</th><th>Customer</th><th>Items</th><th>Payment</th><th>Total</th><th /></tr></thead><tbody>{sales.map(order => <tr key={order.id}><td>{order.orderNumber}</td><td>{time(order.createdAt)}</td><td>{[order.billingFirstName, order.billingLastName].filter(Boolean).join(' ') || 'Walk-in'}</td><td>{order.items.map(item => `${item.productName}${item.variantDetails ? ` (${item.variantDetails})` : ''} ×${item.quantity}`).join(', ')}</td><td>{order.paymentMethod}{order.paymentReference && <small>{order.paymentReference}</small>}</td><td>{cash(order.total)}</td><td><button className="pos-print-button" onClick={() => setReceiptOrder(order)}><Printer size={16} /> Receipt</button></td></tr>)}</tbody></table></div> : <p className="pos-empty">No shop sales today yet.</p> : pickupOrders.length ? <div className="pos-pickup-list">{pickupOrders.map(order => <article key={order.id}><div><b>{order.orderNumber || `Order #${order.id}`}</b><span>{[order.billingFirstName, order.billingLastName].filter(Boolean).join(' ') || 'Customer'} · {order.billingPhone || 'No phone'}</span><small>{order.items.map(item => `${item.productName} ×${item.quantity}`).join(', ')}</small><small className={order.paymentStatus === 'PAID' ? 'pos-paid-label' : 'pos-due-label'}>{order.paymentStatus === 'PAID' ? `Already paid via ${order.paymentMethod || 'online'}` : 'Payment due at collection'}</small></div><strong>{cash(order.total)}</strong><button className="pos-pickup-button" onClick={() => { setCollecting(order); setCollectAmount(Number(order.total).toFixed(2)); setCollectReference(''); setCollectMethod('CASH'); }}>{order.paymentStatus === 'PAID' ? 'Mark collected & hand over' : 'Collect payment & hand over'}</button></article>)}</div> : <p className="pos-empty">No open shop collection orders.</p>}
+      <section className="pos-activity-panel"><div className="pos-activity-heading"><div><h2>Shop activity</h2><p>Sales and customer orders for collection at the shop.</p></div><div className="pos-tabs"><button className={activityTab === 'sales' ? 'selected' : ''} onClick={() => setActivityTab('sales')}>Today’s sales</button><button className={activityTab === 'pickups' ? 'selected' : ''} onClick={() => setActivityTab('pickups')}>Shop pickups <span>{pickupOrders.length}</span></button><button className={activityTab === 'deliveries' ? 'selected' : ''} onClick={() => setActivityTab('deliveries')}>COD deliveries <span>{deliveryOrders.length}</span></button></div></div>
+        {activityTab === 'sales' ? sales.length ? <div className="pos-table-wrap"><table><thead><tr><th>Receipt</th><th>Time</th><th>Customer</th><th>Items</th><th>Payment</th><th>Total</th><th /></tr></thead><tbody>{sales.map(order => <tr key={order.id}><td>{order.orderNumber}</td><td>{time(order.createdAt)}</td><td>{[order.billingFirstName, order.billingLastName].filter(Boolean).join(' ') || 'Walk-in'}</td><td>{order.items.map(item => `${item.productName}${item.variantDetails ? ` (${item.variantDetails})` : ''} ×${item.quantity}`).join(', ')}</td><td>{order.paymentMethod}{order.paymentReference && <small>{order.paymentReference}</small>}</td><td>{cash(order.total)}</td><td><button className="pos-print-button" onClick={() => setReceiptOrder(order)}><Printer size={16} /> Receipt</button></td></tr>)}</tbody></table></div> : <p className="pos-empty">No shop sales today yet.</p> : activityTab === 'pickups' ? pickupOrders.length ? <div className="pos-pickup-list">{pickupOrders.map(order => <article key={order.id}><div><b>{order.orderNumber || `Order #${order.id}`}</b><span>{[order.billingFirstName, order.billingLastName].filter(Boolean).join(' ') || 'Customer'} · {order.billingPhone || 'No phone'}</span><small>{order.items.map(item => `${item.productName} ×${item.quantity}`).join(', ')}</small><small className={order.paymentStatus === 'PAID' ? 'pos-paid-label' : 'pos-due-label'}>{order.paymentStatus === 'PAID' ? `Already paid via ${order.paymentMethod || 'online'}` : 'Payment due at collection'}</small></div><strong>{cash(order.total)}</strong>{order.paymentMethod === 'mpesa' && order.paymentStatus !== 'PAID' ? <button className="pos-pickup-button" disabled>Awaiting admin payment approval</button> : <button className="pos-pickup-button" onClick={() => { setCollecting(order); setCollectAmount(Number(order.total).toFixed(2)); setCollectReference(''); setCollectMethod('CASH'); }}>{order.paymentStatus === 'PAID' ? 'Mark collected & hand over' : 'Collect payment & hand over'}</button>}</article>)}</div> : <p className="pos-empty">No open shop collection orders.</p> : deliveryOrders.length ? <div className="pos-pickup-list">{deliveryOrders.map(order => <article key={order.id}><div><b>{order.orderNumber}</b><span>{order.billingFirstName} {order.billingLastName} · {order.billingPhone}</span><small>{order.shippingAddress}</small><small>{order.items.map(item => `${item.productName} ×${item.quantity}`).join(', ')}</small><small className="pos-due-label">Cash on delivery · confirm exact cash received</small></div><strong>{cash(order.total)}</strong><button className="pos-pickup-button" disabled={busy} onClick={() => confirmDeliveryCash(order)}>Confirm cash received</button></article>)}</div> : <p className="pos-empty">No assigned COD deliveries awaiting payment.</p>}
       </section>
     </main>
 

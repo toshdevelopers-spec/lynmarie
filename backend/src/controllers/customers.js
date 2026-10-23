@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 import { passwordSchema } from "../utils/security.js";
 import { sendPasswordChangedEmail } from "../utils/email.js";
 export const updateMe = asyncHandler(async (req, res) => {
-  const body = z.object({ first_name: z.string().trim().min(1).optional(), last_name: z.string().trim().min(1).optional(), phone: z.string().optional() }).parse(req.body);
-  const user = await prisma.user.update({ where: { id: req.user.id }, data: { firstName: body.first_name, lastName: body.last_name, phone: body.phone } });
+  const body = z.object({ phone: z.string().trim().max(40).optional() }).strict().parse(req.body);
+  const user = await prisma.user.update({ where: { id: req.user.id }, data: { phone: body.phone } });
   res.json({ success: true, data: { id: user.id, email: user.email, first_name: user.firstName, last_name: user.lastName, phone: user.phone } });
 });
 export const orders = asyncHandler(async (req, res) => { const rows = await prisma.order.findMany({ where: { userId: req.user.id }, include: { items: true }, orderBy: { createdAt: "desc" } }); res.json({ success: true, data: rows }); });
@@ -16,8 +16,10 @@ export const getAddresses = asyncHandler(async (req, res) => { const rows = awai
 export const saveAddress = asyncHandler(async (req, res) => {
   const type = z.enum(["BILLING", "SHIPPING"]).parse(req.params.type.toUpperCase());
   const a = addressSchema.parse(req.body);
-  const data = { firstName: a.first_name, lastName: a.last_name, company: a.company, address1: a.address_1, address2: a.address_2, city: a.city, state: a.state, postcode: a.postcode, country: a.country, phone: a.phone };
+  const account = await prisma.user.findUniqueOrThrow({ where: { id: req.user.id }, select: { firstName: true, lastName: true } });
+  const data = { firstName: account.firstName, lastName: account.lastName, company: a.company, address1: a.address_1, address2: a.address_2, city: a.city, state: a.state, postcode: a.postcode, country: a.country, phone: a.phone };
   const row = await prisma.address.upsert({ where: { userId_type: { userId: req.user.id, type } }, create: { userId: req.user.id, type, ...data }, update: data });
+  if (type === "SHIPPING" && a.phone) await prisma.user.update({ where: { id: req.user.id }, data: { phone: a.phone } });
   res.json({ success: true, data: addressDto(row) });
 });
 export const changePassword = asyncHandler(async (req, res) => {

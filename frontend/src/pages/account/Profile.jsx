@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { Link } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import ErrorMessage from '../../components/ui/ErrorMessage';
@@ -55,7 +56,7 @@ const Profile = () => {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    const result = await updateProfile(formData);
+    const result = await updateProfile({ phone: formData.phone });
     if (result.success) {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -91,7 +92,7 @@ const Profile = () => {
             label="First Name"
             type="text"
             value={formData.first_name}
-            onChange={handleChange}
+            readOnly
             error={errors.first_name}
             required
           />
@@ -101,7 +102,7 @@ const Profile = () => {
             label="Last Name"
             type="text"
             value={formData.last_name}
-            onChange={handleChange}
+            readOnly
             error={errors.last_name}
             required
           />
@@ -133,6 +134,12 @@ const Profile = () => {
           </Button>
         </div>
       </form>
+
+      <section className="mt-8 rounded-xl border border-purple-100 bg-purple-50 p-5">
+        <h3 className="text-lg font-semibold text-gray-900">Saved delivery address</h3>
+        <p className="my-2 text-sm text-gray-600">Edit your saved address and phone number for future checkouts.</p>
+        <Link className="inline-flex rounded-lg bg-purple-800 px-4 py-2 font-semibold text-white" to="/my-account/addresses">Edit saved address</Link>
+      </section>
 
       <section className="profile-password-section">
         <h3 className="text-xl font-semibold text-gray-900">Change password</h3>

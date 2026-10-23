@@ -3,11 +3,13 @@ import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 import { authService } from '../../services/auth';
+import { useAuth } from '../../hooks/useAuth';
 
 const Addresses = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     company: '',
     address_1: '',
     address_2: '',
@@ -82,7 +84,7 @@ const Addresses = () => {
             label="First Name"
             type="text"
             value={formData.first_name}
-            onChange={handleChange}
+            readOnly
             error={errors.first_name}
             required
           />
@@ -92,7 +94,7 @@ const Addresses = () => {
             label="Last Name"
             type="text"
             value={formData.last_name}
-            onChange={handleChange}
+            readOnly
             error={errors.last_name}
             required
           />

@@ -18,11 +18,12 @@ const sales = asyncHandler(async (req, res) => {
   const from = req.query.from ? new Date(req.query.from) : new Date(Date.now() - 24 * 60 * 60 * 1000);
   if (Number.isNaN(from.getTime())) return res.status(400).json({ success: false, message: "Invalid sales date" });
   const sellerFilter = req.user.role === "ADMIN" ? {} : { sellerId: req.user.id };
-  const [rows, pickupOrders] = await Promise.all([
+  const [rows, pickupOrders, deliveryOrders] = await Promise.all([
     prisma.order.findMany({ where: { orderType: "POS", createdAt: { gte: from }, ...sellerFilter }, include: { items: true, seller: { select: { id: true, firstName: true, lastName: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.order.findMany({ where: { fulfillmentMethod: "PICKUP", pickedUpAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true }, orderBy: { createdAt: "asc" }, take: 100 }),
+    prisma.order.findMany({ where: { fulfillmentMethod: "DELIVERY", paymentMethod: "cod", paymentStatus: "PENDING", deliveryRiderId: req.user.role === "ADMIN" ? { not: null } : req.user.id, deliveryPaymentConfirmedAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, include: { items: true, deliveryRider: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" }, take: 100 }),
   ]);
-  res.json({ success: true, data: { sales: rows, pickupOrders } });
+  res.json({ success: true, data: { sales: rows, pickupOrders, deliveryOrders } });
 });
 
 const saleSchema = z.object({
@@ -101,6 +102,7 @@ const collectPickupOrder = asyncHandler(async (req, res) => {
   const input = recordPaymentSchema.parse(req.body);
   const order = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
   if (order.fulfillmentMethod !== "PICKUP" || order.orderType !== "ONLINE" || ["CANCELLED", "REFUNDED"].includes(order.status)) return res.status(409).json({ success: false, message: "This is not an open shop pickup order" });
+  if (order.paymentMethod === "mpesa" && order.paymentStatus !== "PAID") return res.status(409).json({ success: false, message: "Online M-Pesa payment must be approved by an administrator before collection" });
   const total = Number(order.total);
   const paymentMethod = order.paymentStatus === "PAID" ? order.paymentMethod : input.paymentMethod;
   const amountTendered = order.paymentStatus === "PAID" ? Number(order.amountTendered ?? order.amountPaid) : input.amountTendered;
@@ -109,9 +111,10 @@ const collectPickupOrder = asyncHandler(async (req, res) => {
   if (order.paymentStatus !== "PAID" && paymentMethod !== "CASH" && amountTendered !== total) return res.status(400).json({ success: false, message: "Card, M-Pesa, or bank payment must equal the order total" });
   const reference = input.paymentReference || (order.paymentMethod === paymentMethod.toLowerCase() ? order.paymentReference : null);
   if (order.paymentStatus !== "PAID" && validateReference(paymentMethod, reference)) return res.status(400).json({ success: false, message: "Enter the M-Pesa or bank transaction code" });
+  if (order.paymentStatus === "AWAITING_REVIEW" || order.paymentStatus === "REJECTED") return res.status(409).json({ success: false, message: "Online M-Pesa payment must be reviewed by an administrator before collection" });
   const result = await prisma.order.updateMany({ where: { id, fulfillmentMethod: "PICKUP", pickedUpAt: null, status: { notIn: ["CANCELLED", "REFUNDED"] } }, data: {
-    status: "COMPLETED", paymentStatus: "PAID", paymentMethod, paymentReference: reference || null,
-    amountPaid: order.paymentStatus === "PAID" ? order.amountPaid : total, amountTendered, pickedUpAt: new Date(), sellerId: req.user.id,
+    status: "PROCESSING", paymentStatus: "PAID", paymentMethod, paymentReference: reference || null,
+    amountPaid: order.paymentStatus === "PAID" ? order.amountPaid : total, amountTendered, pickedUpAt: new Date(), collectionConfirmedById: req.user.id, sellerId: req.user.id,
   } });
   if (!result.count) return res.status(409).json({ success: false, message: "This pickup has already been collected or paid" });
   const updated = await prisma.order.findUnique({ where: { id }, include: { items: true, seller: { select: { id: true, firstName: true, lastName: true, email: true } } } });
@@ -122,4 +125,15 @@ const collectPickupOrder = asyncHandler(async (req, res) => {
   res.json({ success: true, data: updated, change: Number((input.amountTendered - total).toFixed(2)) });
 });
 
-export { inventory, sales, checkoutSale, collectPickupOrder };
+const confirmDeliveryPayment = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const { amountReceived } = z.object({ amountReceived: z.coerce.number().positive() }).parse(req.body);
+  const order = await prisma.order.findUniqueOrThrow({ where: { id } });
+  if (order.fulfillmentMethod !== "DELIVERY" || order.paymentMethod !== "cod" || order.paymentStatus !== "PENDING" || order.deliveryRiderId !== req.user.id || order.deliveryPaymentConfirmedAt || ["CANCELLED", "REFUNDED"].includes(order.status)) return res.status(409).json({ success: false, message: "This cash-on-delivery order is not assigned to you or is no longer payable" });
+  if (Number(amountReceived) !== Number(order.total)) return res.status(400).json({ success: false, message: "Amount received must match the order total" });
+  const changed = await prisma.order.updateMany({ where: { id, deliveryRiderId: req.user.id, paymentStatus: "PENDING", deliveryPaymentConfirmedAt: null }, data: { deliveryPaymentAmount: amountReceived, deliveryPaymentConfirmedAt: new Date(), deliveryPaymentConfirmedById: req.user.id, amountTendered: amountReceived } });
+  if (!changed.count) return res.status(409).json({ success: false, message: "Payment receipt was already recorded" });
+  res.json({ success: true, data: await prisma.order.findUnique({ where: { id }, include: { items: true } }), message: "Cash receipt recorded. An administrator must approve the payment." });
+});
+
+export { inventory, sales, checkoutSale, collectPickupOrder, confirmDeliveryPayment };

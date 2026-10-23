@@ -191,12 +191,39 @@ export const deleteUser = asyncHandler(async (req, res) => {
   if (user.role === "ADMIN" && req.user.email.toLowerCase() !== "adelewigitz@gmail.com") return res.status(403).json({ success: false, message: "Only the store owner can disable another administrator" });
   res.json({ success: true, data: await prisma.user.update({ where: { id }, data: { isActive: false } }), message: "User access disabled; order history is preserved" });
 });
-export const orders = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.order.findMany({ include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } }, seller: { select: { id: true, email: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } }) }));
+export const orders = asyncHandler(async (req, res) => res.json({ success: true, data: await prisma.order.findMany({ include: { items: true, user: { select: { id: true, email: true, firstName: true, lastName: true } }, seller: { select: { id: true, email: true, firstName: true, lastName: true } }, deliveryRider: { select: { id: true, email: true, firstName: true, lastName: true } }, paymentReviewer: { select: { id: true, email: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } }) }));
+export const assignDeliveryRider = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const { riderId } = z.object({ riderId: z.coerce.number().int().positive().nullable() }).parse(req.body);
+  const rider = riderId ? await prisma.user.findFirst({ where: { id: riderId, role: "SELLER", isActive: true } }) : null;
+  if (riderId && !rider) return res.status(400).json({ success: false, message: "Choose an active seller account as the delivery rider" });
+  const order = await prisma.order.findUniqueOrThrow({ where: { id } });
+  if (order.fulfillmentMethod !== "DELIVERY" || order.paymentMethod !== "cod" || order.paymentStatus === "PAID") return res.status(409).json({ success: false, message: "Riders can only be assigned to unpaid cash-on-delivery orders" });
+  res.json({ success: true, data: await prisma.order.update({ where: { id }, data: { deliveryRiderId: riderId } }) });
+});
+export const reviewOrderPayment = asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const { decision, note } = z.object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(1000).optional() }).parse(req.body);
+  const order = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+  if (order.fulfillmentMethod === "DELIVERY" && order.paymentMethod === "cod" && !order.deliveryPaymentConfirmedAt) return res.status(409).json({ success: false, message: "The assigned rider must confirm receiving the cash before payment approval" });
+  if (order.fulfillmentMethod === "PICKUP" && order.paymentMethod === "pay_on_pickup" && !order.pickedUpAt) return res.status(409).json({ success: false, message: "The seller must confirm collection and payment receipt first" });
+  if (order.paymentMethod === "mpesa" && !order.paymentMessage) return res.status(409).json({ success: false, message: "This M-Pesa order has no submitted confirmation message to review" });
+  if (!["AWAITING_REVIEW", "PENDING", "REJECTED"].includes(order.paymentStatus)) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
+  if (decision === "REJECT" && !note) return res.status(400).json({ success: false, message: "Add a reason so the customer knows what needs attention" });
+  const paidByCustomer = order.paymentMethod === "mpesa" || (order.paymentMethod === "cod" && order.fulfillmentMethod === "DELIVERY");
+  const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? order.total : 0, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: note || null, ...(paidByCustomer && decision === "APPROVE" ? { status: "PROCESSING" } : {}) } });
+  if (!changed.count) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
+  const row = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+  const { sendOrderUpdateEmail } = await import("../utils/email.js");
+  try { await sendOrderUpdateEmail(row, { kind: "payment", message: decision === "APPROVE" ? `Your payment of KES ${Number(order.total).toLocaleString("en-KE", { minimumFractionDigits: 2 })} has been verified and approved.` : `We could not approve the payment yet. ${note}` }); } catch (error) { console.error("Payment review email could not be sent:", error.message); }
+  res.json({ success: true, data: row });
+});
 export const setOrderStatus = asyncHandler(async (req, res) => {
   const status = z.enum(["PENDING", "PROCESSING", "COMPLETED", "CANCELLED", "REFUNDED"]).parse(req.body.status);
   const id = z.coerce.number().int().positive().parse(req.params.id);
   const row = await prisma.$transaction(async tx => {
     const order = await tx.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+    if (status === "COMPLETED" && (order.paymentStatus !== "PAID" || (order.fulfillmentMethod === "PICKUP" && !order.pickedUpAt) || (order.fulfillmentMethod === "DELIVERY" && order.status !== "PROCESSING"))) throw Object.assign(new Error("An order can only be completed after payment and fulfilment are confirmed"), { status: 409 });
     const releasesStock = !["CANCELLED", "REFUNDED"].includes(order.status) && ["CANCELLED", "REFUNDED"].includes(status);
     const reservesStock = ["CANCELLED", "REFUNDED"].includes(order.status) && !["CANCELLED", "REFUNDED"].includes(status);
     if (releasesStock || reservesStock) {
