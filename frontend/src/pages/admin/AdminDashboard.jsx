@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Shirt, Tags, Users, ShoppingBag, Star, MessageSquareText, Plus, Pencil, Archive, Check, LogOut, Menu, X, Search, RefreshCw, Trash2, Bell, Mail, ArrowUp, ArrowDown, Store, Sparkles, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { adminService } from '../../services/admin';
@@ -123,7 +123,17 @@ export default function AdminDashboard() {
     </aside>
     {mobileNav && <button className="admin-scrim" aria-label="Close admin navigation" onClick={() => setMobileNav(false)} />}
     <main className="admin-main">
-      <header className="admin-topbar"><button className="admin-menu-toggle" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu /></button><div><span>Store management</span><h1>{navItems.find(([key]) => key === section)?.[1]}</h1></div><div className="admin-top-actions"><Link to="/seller" className="admin-pos-link"><Store size={16} /><span>Shop POS</span></Link><span className="admin-live"><i /> Store is live</span><div className="admin-notification-wrap"><button onClick={() => { setNotificationsOpen(open => !open); setUnreadNotifications(0); }} aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`} aria-expanded={notificationsOpen}><Bell size={17} />{unreadNotifications > 0 && <i className="admin-notification-count">{unreadNotifications}</i>}</button>{notificationsOpen && <section className="admin-notification-panel"><div className="admin-notification-heading"><b>Updates</b><span>Live</span></div>{notifications.length ? notifications.map(item => <article key={item.id}><p>{item.message}</p><small>{item.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></article>) : <p className="admin-notification-empty">New enquiries, orders, and saved changes will appear here.</p>}</section>}</div><button onClick={refresh} aria-label="Refresh data"><RefreshCw size={17} /></button></div></header>
+      <header className="admin-topbar">
+        <button className="admin-menu-toggle" onClick={() => setMobileNav(true)} aria-label="Open navigation"><Menu /></button>
+        <div><span>Store management</span><h1>{navItems.find(([key]) => key === section)?.[1]}</h1></div>
+        <div className="admin-top-actions">
+          <Link to="/" className="admin-pos-link admin-store-link" aria-label="Go to the LynMarie website" title="View website"><ExternalLink size={16} /><span>View website</span></Link>
+          <Link to="/seller" className="admin-pos-link"><Store size={16} /><span>Shop POS</span></Link>
+          <span className="admin-live"><i /> Store is live</span>
+          <div className="admin-notification-wrap"><button onClick={() => { setNotificationsOpen(open => !open); setUnreadNotifications(0); }} aria-label={`Notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`} aria-expanded={notificationsOpen}><Bell size={17} />{unreadNotifications > 0 && <i className="admin-notification-count">{unreadNotifications}</i>}</button>{notificationsOpen && <section className="admin-notification-panel"><div className="admin-notification-heading"><b>Updates</b><span>Live</span></div>{notifications.length ? notifications.map(item => <article key={item.id}><p>{item.message}</p><small>{item.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></article>) : <p className="admin-notification-empty">New enquiries, orders, and saved changes will appear here.</p>}</section>}</div>
+          <button onClick={refresh} aria-label="Refresh data"><RefreshCw size={17} /></button>
+        </div>
+      </header>
       <section className="admin-content">
         {notice && <div className="admin-notice">{notice}</div>}{error && <div className="admin-error">{error}</div>}
         {loading ? <div className="admin-loading"><Loader size="large" /></div> : <>
