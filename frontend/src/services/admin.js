@@ -47,7 +47,7 @@ export const adminService = {
   deleteUser: id => request('delete', `/admin/users/${id}`),
   orders: () => request('get', '/admin/orders'),
   setOrderStatus: (id, status) => request('patch', `/admin/orders/${id}/status`, { status }),
-  reviewOrderPayment: (id, decision, note) => request('patch', `/admin/orders/${id}/payment-review`, { decision, note }),
+  reviewOrderPayment: (id, decision, note, reference) => request('patch', `/admin/orders/${id}/payment-review`, { decision, note, reference }),
   assignDeliveryRider: (id, riderId) => request('patch', `/admin/orders/${id}/delivery-rider`, { riderId }),
   posInventory: () => request('get', '/pos/inventory'),
   posSales: from => request('get', `/pos/sales?from=${encodeURIComponent(from)}`),

@@ -17,6 +17,7 @@ const Register = lazy(() => import('./pages/auth/Register'));
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
 const MyAccount = lazy(() => import('./pages/account/MyAccount'));
 const Orders = lazy(() => import('./pages/account/Orders'));
+const OrderDetails = lazy(() => import('./pages/account/OrderDetails'));
 const Profile = lazy(() => import('./pages/account/Profile'));
 const Addresses = lazy(() => import('./pages/account/Addresses'));
 const ChangePassword = lazy(() => import('./pages/account/ChangePassword'));
@@ -125,6 +126,7 @@ function AppContent() {
                 <Route path="/my-account" element={<MyAccount />}>
                   <Route index element={<Orders />} />
                   <Route path="orders" element={<Orders />} />
+                  <Route path="orders/:id" element={<OrderDetails />} />
                   <Route path="profile" element={<Profile />} />
                   <Route path="addresses" element={<Addresses />} />
                   <Route path="change-password" element={<ChangePassword />} />

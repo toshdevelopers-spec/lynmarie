@@ -203,15 +203,16 @@ export const assignDeliveryRider = asyncHandler(async (req, res) => {
 });
 export const reviewOrderPayment = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
-  const { decision, note } = z.object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(1000).optional() }).parse(req.body);
+  const { decision, note, reference, message } = z.object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(1000).optional(), reference: z.string().trim().max(100).optional(), message: z.string().trim().max(5000).optional() }).parse(req.body);
   const order = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
   if (order.fulfillmentMethod === "DELIVERY" && order.paymentMethod === "cod" && !order.deliveryPaymentConfirmedAt) return res.status(409).json({ success: false, message: "The assigned rider must confirm receiving the cash before payment approval" });
   if (order.fulfillmentMethod === "PICKUP" && order.paymentMethod === "pay_on_pickup" && !order.pickedUpAt) return res.status(409).json({ success: false, message: "The seller must confirm collection and payment receipt first" });
-  if (order.paymentMethod === "mpesa" && !order.paymentMessage) return res.status(409).json({ success: false, message: "This M-Pesa order has no submitted confirmation message to review" });
+  if (order.paymentMethod !== "mpesa" && order.paymentMethod !== "cod" && order.paymentMethod !== "pay_on_pickup") return res.status(409).json({ success: false, message: "This order does not have a supported payment method to review" });
   if (!["AWAITING_REVIEW", "PENDING", "REJECTED"].includes(order.paymentStatus)) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
   if (decision === "REJECT" && !note) return res.status(400).json({ success: false, message: "Add a reason so the customer knows what needs attention" });
   const paidByCustomer = order.paymentMethod === "mpesa" || (order.paymentMethod === "cod" && order.fulfillmentMethod === "DELIVERY");
-  const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? order.total : 0, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: note || null, ...(paidByCustomer && decision === "APPROVE" ? { status: "PROCESSING" } : {}) } });
+  const reviewNote = note || (decision === "APPROVE" && order.paymentMethod === "mpesa" && !order.paymentMessage && !message ? "Manually confirmed by administrator against M-Pesa records" : null);
+  const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? order.total : 0, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: reviewNote, ...(reference ? { paymentReference: reference } : {}), ...(message ? { paymentMessage: message } : {}), ...(paidByCustomer && decision === "APPROVE" ? { status: "PROCESSING" } : {}) } });
   if (!changed.count) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
   const row = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
   const { sendOrderUpdateEmail } = await import("../utils/email.js");

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
@@ -9,6 +10,17 @@ import ErrorMessage from '../components/ui/ErrorMessage';
 import { checkoutService } from '../services/checkout';
 import { hideBrokenProductImage } from '../utils/images';
 import { authService } from '../services/auth';
+
+const EditableCheckoutInput = ({ user, editingFields, setEditingFields, ...props }) => {
+  const inputRef = useRef(null);
+  const filled = String(props.value || '').trim().length > 0;
+  const locked = Boolean(user && filled && !editingFields[props.name]);
+  const editField = () => {
+    setEditingFields(current => ({ ...current, [props.name]: true }));
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  return <div className="relative"><Input {...props} ref={inputRef} readOnly={locked} className={`${props.className || ''} ${user ? 'pr-12' : ''}`} />{user && <button type="button" onClick={editField} className="absolute right-2 top-[2rem] rounded-md p-2 text-purple-800 hover:bg-purple-100" aria-label={`Edit ${props.label}`} title={`Edit ${props.label}`}><Pencil size={16} /></button>}</div>;
+};
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -41,7 +53,7 @@ const Checkout = () => {
     fulfillment_method: 'DELIVERY',
   });
   const [sameAsBilling, setSameAsBilling] = useState(true);
-  const [editingSavedDetails, setEditingSavedDetails] = useState(!user);
+  const [editingFields, setEditingFields] = useState({});
   const [paymentMessage, setPaymentMessage] = useState('');
 
   useEffect(() => {
@@ -50,7 +62,7 @@ const Checkout = () => {
     authService.getAddresses().then(addresses => {
       if (!active) return;
       const saved = addresses.shipping || {};
-      setFormData(current => ({ ...current, billing_phone: user.phone || saved.phone || current.billing_phone, billing_address_1: saved.address_1 || current.billing_address_1, billing_city: saved.city || current.billing_city, billing_county: saved.state || current.billing_county, shipping_address_1: saved.address_1 || current.shipping_address_1, shipping_city: saved.city || current.shipping_city, shipping_county: saved.state || current.shipping_county }));
+      setFormData(current => ({ ...current, billing_first_name: user.first_name || current.billing_first_name, billing_last_name: user.last_name || current.billing_last_name, billing_email: user.email || current.billing_email, shipping_first_name: user.first_name || current.shipping_first_name, shipping_last_name: user.last_name || current.shipping_last_name, billing_phone: user.phone || saved.phone || current.billing_phone, billing_address_1: saved.address_1 || current.billing_address_1, billing_city: saved.city || current.billing_city, billing_county: saved.state || current.billing_county, shipping_address_1: saved.address_1 || current.shipping_address_1, shipping_city: saved.city || current.shipping_city, shipping_county: saved.state || current.shipping_county }));
     }).catch(() => {});
     return () => { active = false; };
   }, [user]);
@@ -134,7 +146,6 @@ const Checkout = () => {
             {/* Billing Details */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Billing Details</h2>
-              {user && <div className="mb-4 flex items-center justify-between rounded-lg bg-purple-50 p-3 text-sm"><span>Saved customer details are filled in automatically. Your name and email are account details.</span><button type="button" className="font-semibold text-purple-800 underline" onClick={() => setEditingSavedDetails(value => !value)}>{editingSavedDetails ? 'Use saved details' : 'Edit saved details'}</button></div>}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   name="billing_first_name"
@@ -163,41 +174,41 @@ const Checkout = () => {
                   readOnly={!!user}
                   required
                 />
-                <Input
+                <EditableCheckoutInput
+                  user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                   name="billing_phone"
                   label="Phone Number"
                   type="tel"
                   value={formData.billing_phone}
                   onChange={handleChange}
-                  readOnly={!!user && !editingSavedDetails}
                   required
                 />
-                <Input
+                <EditableCheckoutInput
+                  user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                   name="billing_address_1"
                   label="Street Address"
                   type="text"
                   value={formData.billing_address_1}
                   onChange={handleChange}
-                  readOnly={!!user && !editingSavedDetails}
                   required={formData.fulfillment_method === 'DELIVERY'}
                   className="md:col-span-2"
                 />
-                <Input
+                <EditableCheckoutInput
+                  user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                   name="billing_city"
                   label="City"
                   type="text"
                   value={formData.billing_city}
                   onChange={handleChange}
-                  readOnly={!!user && !editingSavedDetails}
                   required={formData.fulfillment_method === 'DELIVERY'}
                 />
-                <Input
+                <EditableCheckoutInput
+                  user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                   name="billing_county"
                   label="County"
                   type="text"
                   value={formData.billing_county}
                   onChange={handleChange}
-                  readOnly={!!user && !editingSavedDetails}
                 />
                 <Input
                   name="billing_country"
@@ -247,6 +258,7 @@ const Checkout = () => {
                     type="text"
                     value={formData.shipping_first_name}
                     onChange={handleChange}
+                    readOnly={!!user}
                     required
                   />
                   <Input
@@ -255,28 +267,30 @@ const Checkout = () => {
                     type="text"
                     value={formData.shipping_last_name}
                     onChange={handleChange}
+                    readOnly={!!user}
                     required
                   />
-                  <Input
+                  <EditableCheckoutInput
+                    user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                     name="shipping_address_1"
                     label="Street Address"
                     type="text"
                     value={formData.shipping_address_1}
                     onChange={handleChange}
-                    readOnly={!!user && !editingSavedDetails}
                     required
                     className="md:col-span-2"
                   />
-                  <Input
+                  <EditableCheckoutInput
+                    user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                     name="shipping_city"
                     label="City"
                     type="text"
                     value={formData.shipping_city}
                     onChange={handleChange}
-                    readOnly={!!user && !editingSavedDetails}
                     required
                   />
-                  <Input
+                  <EditableCheckoutInput
+                    user={user} editingFields={editingFields} setEditingFields={setEditingFields}
                     name="shipping_county"
                     label="County"
                     type="text"
@@ -397,9 +411,9 @@ const Checkout = () => {
                     <p className="font-semibold">Pay by M-Pesa before {formData.fulfillment_method === 'PICKUP' ? 'collection' : 'delivery'}</p>
                     <p className="mt-1">Paybill: <span className="font-medium">400200</span></p>
                     <p>Account number: <span className="font-medium">851561</span></p>
-                    <Input name="payment_reference" label="M-Pesa receipt code" value={formData.payment_reference} onChange={handleChange} placeholder="e.g. QWE123ABC" required />
-                    <label className="mt-3 block text-sm font-medium text-gray-700">Paste the full M-Pesa confirmation message<textarea className="mt-1 min-h-28 w-full rounded-lg border border-gray-300 p-3 focus:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200" value={paymentMessage} onChange={event => setPaymentMessage(event.target.value)} maxLength={5000} required placeholder="Paste the complete SMS, including the receipt code, amount, date and recipient." /></label>
-                    <p className="mt-1 text-xs text-gray-600">An administrator will review the receipt code and full message before approving this payment.</p>
+                    <Input name="payment_reference" label="M-Pesa receipt code (optional)" value={formData.payment_reference} onChange={handleChange} placeholder="e.g. QWE123ABC" />
+                    <label className="mt-3 block text-sm font-medium text-gray-700">Full M-Pesa confirmation message (optional)<textarea className="mt-1 min-h-28 w-full rounded-lg border border-gray-300 p-3 focus:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-200" value={paymentMessage} onChange={event => setPaymentMessage(event.target.value)} maxLength={5000} placeholder="Paste the complete SMS, including receipt code, amount, date and recipient." /></label>
+                    <p className="mt-1 text-xs text-gray-600">You can place the order without pasting the SMS. An administrator will confirm receipt against the store’s M-Pesa records.</p>
                   </div>
                 )}
                 {formData.payment_method === 'pay_on_pickup' && <p className="mt-3 rounded-lg bg-amber-50 p-4 text-sm text-gray-800">Your items will be reserved for shop collection. The seller will record your payment when you arrive.</p>}
