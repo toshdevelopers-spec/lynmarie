@@ -89,13 +89,17 @@ export default function AdminDashboard() {
         const snapshot = await adminService.dashboard();
         if (!active) return;
         const counts = snapshot.counts || {};
+        const orderUpdated = previous && snapshot.latestOrderUpdate !== previous.latestOrderUpdate;
         if (previous && counts.inquiries > previous.inquiries) addNotification('A new customer enquiry has arrived.');
         if (previous && counts.orders > previous.orders) addNotification('A new customer order has arrived.');
         if (previous && counts.cancelledOrders > previous.cancelledOrders) {
           addNotification('A customer cancelled an order.');
-          if (['orders', 'payments'].includes(section)) refresh();
         }
-        previous = { inquiries: counts.inquiries || 0, orders: counts.orders || 0, cancelledOrders: counts.cancelledOrders || 0 };
+        if (orderUpdated && ['orders', 'payments'].includes(section)) {
+          addNotification('An order payment or status was updated.');
+        }
+        if (previous && ['orders', 'payments'].includes(section) && (orderUpdated || counts.cancelledOrders > previous.cancelledOrders)) refresh();
+        previous = { inquiries: counts.inquiries || 0, orders: counts.orders || 0, cancelledOrders: counts.cancelledOrders || 0, latestOrderUpdate: snapshot.latestOrderUpdate || null };
       } catch { /* The active section shows connection errors when data is opened. */ }
     };
     checkForUpdates();

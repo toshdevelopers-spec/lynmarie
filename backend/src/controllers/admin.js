@@ -50,19 +50,20 @@ async function replaceProductAttributes(tx, productId, attributes) {
 }
 
 export const dashboard = asyncHandler(async (req, res) => {
-  const [products, customers, orders, reviews, inquiries, visitors, cartAdds, lowStock, paymentApprovals, cancelledOrders] = await Promise.all([
+  const [products, customers, orders, reviews, inquiries, visitors, cartAdds, lowStock, paymentApprovals, cancelledOrders, latestOrderUpdate] = await Promise.all([
     prisma.product.count(), prisma.user.count({ where: { role: "CUSTOMER" } }), prisma.order.count(), prisma.review.count(), prisma.inquiry.count(),
     prisma.storeEvent.findMany({ distinct: ["visitorId"], select: { visitorId: true } }),
     prisma.storeEvent.count({ where: { action: "ADD_TO_CART" } }), prisma.product.count({ where: { manageStock: true, stockQuantity: { lte: 5 }, status: "PUBLISHED" } }),
     prisma.order.count({ where: { paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] }, OR: [{ paymentMethod: "mpesa" }, { paymentMethod: "cod", deliveryPaymentConfirmedAt: { not: null } }] } }),
     prisma.order.count({ where: { status: "CANCELLED" } }),
+    prisma.order.aggregate({ _max: { updatedAt: true } }),
   ]);
   const frequentVisitors = await prisma.storeEvent.groupBy({ by: ["visitorId"], _count: { id: true }, _max: { createdAt: true }, orderBy: { _count: { id: "desc" } }, take: 8 });
   const [recentOrders, recentEvents] = await Promise.all([
     prisma.order.findMany({ include: { items: true }, orderBy: { createdAt: "desc" }, take: 8 }),
     prisma.storeEvent.findMany({ orderBy: { createdAt: "desc" }, take: 12 }),
   ]);
-  res.json({ success: true, data: { counts: { products, customers, orders, reviews, inquiries, visitors: visitors.length, cartAdds, lowStock, paymentApprovals, cancelledOrders }, frequentVisitors, recentOrders, recentEvents } });
+  res.json({ success: true, data: { counts: { products, customers, orders, reviews, inquiries, visitors: visitors.length, cartAdds, lowStock, paymentApprovals, cancelledOrders }, latestOrderUpdate: latestOrderUpdate._max.updatedAt, frequentVisitors, recentOrders, recentEvents } });
 });
 export const cartActivity = asyncHandler(async (req, res) => {
   const events = await prisma.storeEvent.findMany({
