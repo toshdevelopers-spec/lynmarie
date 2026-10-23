@@ -204,16 +204,20 @@ export const assignDeliveryRider = asyncHandler(async (req, res) => {
 });
 export const reviewOrderPayment = asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().positive().parse(req.params.id);
-  const { decision, note, reference, message } = z.object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(1000).optional(), reference: z.string().trim().max(100).optional(), message: z.string().trim().max(5000).optional() }).parse(req.body);
+  const { decision, note, reference, message, paymentMethod, amountReceived } = z.object({ decision: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(1000).optional(), reference: z.string().trim().max(100).optional(), message: z.string().trim().max(5000).optional(), paymentMethod: z.enum(["mpesa", "cash", "bank", "card"]).optional(), amountReceived: z.coerce.number().positive().optional() }).parse(req.body);
   const order = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+  if (["COMPLETED", "CANCELLED", "REFUNDED"].includes(order.status)) return res.status(409).json({ success: false, message: "Completed, cancelled, or refunded orders cannot receive payment approval" });
   if (order.fulfillmentMethod === "DELIVERY" && order.paymentMethod === "cod" && !order.deliveryPaymentConfirmedAt) return res.status(409).json({ success: false, message: "The assigned rider must confirm receiving the cash before payment approval" });
   if (order.fulfillmentMethod === "PICKUP" && order.paymentMethod === "pay_on_pickup" && !order.pickedUpAt) return res.status(409).json({ success: false, message: "The seller must confirm collection and payment receipt first" });
-  if (order.paymentMethod !== "mpesa" && order.paymentMethod !== "cod" && order.paymentMethod !== "pay_on_pickup") return res.status(409).json({ success: false, message: "This order does not have a supported payment method to review" });
   if (!["AWAITING_REVIEW", "PENDING", "REJECTED"].includes(order.paymentStatus)) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
   if (decision === "REJECT" && !note) return res.status(400).json({ success: false, message: "Add a reason so the customer knows what needs attention" });
-  const paidByCustomer = order.paymentMethod === "mpesa" || (order.paymentMethod === "cod" && order.fulfillmentMethod === "DELIVERY");
-  const reviewNote = note || (decision === "APPROVE" && order.paymentMethod === "mpesa" && !order.paymentMessage && !message ? "Manually confirmed by administrator against M-Pesa records" : null);
-  const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? order.total : 0, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: reviewNote, ...(reference ? { paymentReference: reference } : {}), ...(message ? { paymentMessage: message } : {}), ...(paidByCustomer && decision === "APPROVE" ? { status: "PROCESSING" } : {}) } });
+  const method = paymentMethod || (order.paymentMethod === "mpesa" ? "mpesa" : "cash");
+  const received = amountReceived ?? Number(order.total);
+  const total = Number(order.total);
+  if (decision === "APPROVE" && received < total) return res.status(400).json({ success: false, message: "The amount received must cover the order total" });
+  if (decision === "APPROVE" && method !== "cash" && received !== total) return res.status(400).json({ success: false, message: "M-Pesa, bank, and card payments must match the order total" });
+  const reviewNote = note || (decision === "APPROVE" ? `Payment recorded by administrator as ${method.toUpperCase()}${reference ? ` · receipt ${reference}` : ""}` : null);
+  const changed = await prisma.order.updateMany({ where: { id, paymentStatus: { in: ["AWAITING_REVIEW", "PENDING", "REJECTED"] }, status: { notIn: ["COMPLETED", "CANCELLED", "REFUNDED"] } }, data: { paymentStatus: decision === "APPROVE" ? "PAID" : "REJECTED", amountPaid: decision === "APPROVE" ? total : 0, amountTendered: decision === "APPROVE" ? received : order.amountTendered, paymentReviewedAt: new Date(), paymentReviewedById: req.user.id, paymentReviewNote: reviewNote, ...(decision === "APPROVE" ? { paymentMethod: method, paymentReference: reference || null, paymentMessage: message || null, status: "PROCESSING" } : {}) } });
   if (!changed.count) return res.status(409).json({ success: false, message: "This payment has already been reviewed" });
   const row = await prisma.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
   const { sendOrderUpdateEmail } = await import("../utils/email.js");
